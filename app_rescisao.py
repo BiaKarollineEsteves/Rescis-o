@@ -7,7 +7,7 @@ from datetime import datetime
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import cm, mm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image as RLImage, KeepTogether
+from reportlab.platypus import SimpleDocTemplate, BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image as RLImage, KeepTogether
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfgen import canvas as rl_canvas
@@ -270,46 +270,62 @@ section[data-testid="stSidebar"] div {{
     color: rgba(255,255,255,0.88) !important;
     font-size: 0.78rem !important;
 }}
-section[data-testid="stSidebar"] input {{
-    background: rgba(255,255,255,0.1) !important;
-    color: white !important;
-    -webkit-text-fill-color: white !important;
-    border-color: rgba(255,255,255,0.2) !important;
+/* Sidebar inputs - dark bg, white text */
+section[data-testid="stSidebar"] input,
+section[data-testid="stSidebar"] textarea {{
+    background: #0F1F4A !important;
+    color: #F5A800 !important;
+    -webkit-text-fill-color: #F5A800 !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 6px !important;
     font-size: 0.8rem !important;
-    caret-color: white !important;
+    font-weight: 600 !important;
 }}
 section[data-testid="stSidebar"] [data-baseweb="input"] {{
-    background: rgba(255,255,255,0.1) !important;
-    border-color: rgba(255,255,255,0.2) !important;
+    background: #0F1F4A !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 6px !important;
 }}
-section[data-testid="stSidebar"] [data-baseweb="input"]:focus-within {{
-    border-color: {AMARELO} !important;
+section[data-testid="stSidebar"] [data-baseweb="select"] > div:first-child {{
+    background: #0F1F4A !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: {AMARELO} !important;
 }}
-section[data-testid="stSidebar"] [data-baseweb="select"] {{
-    background: rgba(255,255,255,0.1) !important;
+section[data-testid="stSidebar"] [data-baseweb="select"] span {{
+    color: {AMARELO} !important;
+    -webkit-text-fill-color: {AMARELO} !important;
 }}
-section[data-testid="stSidebar"] [data-baseweb="select"] [data-baseweb="popover"] {{
-    background: {AZUL_ESC} !important;
-}}
-section[data-testid="stSidebar"] [role="listbox"] {{
+section[data-testid="stSidebar"] [data-baseweb="popover"] {{
     background: {AZUL_ESC} !important;
 }}
 section[data-testid="stSidebar"] [role="option"] {{
-    background: {AZUL_ESC} !important;
+    background: #0F1F4A !important;
     color: white !important;
 }}
 section[data-testid="stSidebar"] [role="option"]:hover {{
     background: {AZUL} !important;
 }}
 section[data-testid="stSidebar"] .stNumberInput > div {{
-    background: rgba(255,255,255,0.1) !important;
-    border-color: rgba(255,255,255,0.2) !important;
-    border-radius: 6px;
+    background: #0F1F4A !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 6px !important;
 }}
-section[data-testid="stSidebar"] button[kind="stepperButton"] {{
-    background: rgba(255,255,255,0.15) !important;
+section[data-testid="stSidebar"] button[kind="stepperButton"],
+section[data-testid="stSidebar"] button[data-testid="stNumberInputStepUp"],
+section[data-testid="stSidebar"] button[data-testid="stNumberInputStepDown"] {{
+    background: #2B6FD4 !important;
     color: white !important;
-    border-color: rgba(255,255,255,0.2) !important;
+    border-color: rgba(255,255,255,0.3) !important;
+}}
+/* data_editor in sidebar */
+section[data-testid="stSidebar"] .stDataFrame {{
+    background: #0F1F4A !important;
+}}
+section[data-testid="stSidebar"] .stDataFrame td,
+section[data-testid="stSidebar"] .stDataFrame th {{
+    color: white !important;
+    background: #0F1F4A !important;
+    font-size: 0.75rem !important;
 }}
 section[data-testid="stSidebar"] .stFileUploader {{
     background: rgba(255,255,255,0.06);
@@ -535,50 +551,28 @@ with st.sidebar:
     if "ufir_table" not in st.session_state:
         st.session_state.ufir_table = dict(UFIR_TABLE)
 
-    # ── Editar UFIR do ano corrente ──
-    anos_disponiveis = sorted(st.session_state.ufir_table.keys(), reverse=True)
-    ano_sel = st.selectbox("Ano", options=anos_disponiveis,
-                           index=anos_disponiveis.index(ano_atual) if ano_atual in anos_disponiveis else 0)
-    ufir_ano = st.number_input(
-        f"UFIR-RJ {ano_sel}",
-        value=float(st.session_state.ufir_table.get(ano_sel, 4.9604)),
-        min_value=0.0001, step=0.0001, format="%.4f",
-        key=f"ufir_edit_{ano_sel}"
+    # Tabela UFIR editável com data_editor
+    st.markdown('<p style="color:rgba(255,255,255,0.6);font-size:0.7rem;margin-bottom:4px;">Valores oficiais UFIR-RJ · Edite se necessário</p>', unsafe_allow_html=True)
+    df_ufir_edit = pd.DataFrame(
+        sorted(st.session_state.ufir_table.items()), columns=["Ano","UFIR-RJ"]
     )
-    if st.button("💾 Salvar alteração", use_container_width=True):
-        st.session_state.ufir_table[ano_sel] = ufir_ano
-        st.success(f"UFIR {ano_sel} atualizado para {ufir_ano:.4f}")
+    df_edited = st.data_editor(
+        df_ufir_edit,
+        hide_index=True,
+        use_container_width=True,
+        num_rows="dynamic",
+        column_config={
+            "Ano": st.column_config.NumberColumn("Ano", min_value=2000, max_value=2100, step=1, format="%d"),
+            "UFIR-RJ": st.column_config.NumberColumn("UFIR-RJ", min_value=0.0001, format="%.4f"),
+        },
+        key="ufir_editor"
+    )
+    # Sync edits back
+    if df_edited is not None and len(df_edited) > 0:
+        st.session_state.ufir_table = dict(zip(df_edited["Ano"].astype(int), df_edited["UFIR-RJ"]))
+        UFIR_TABLE.update(st.session_state.ufir_table)
 
-    # ── Adicionar novo ano ──
-    st.markdown('<p class="sidebar-section-title" style="margin-top:12px;">➕ Novo Ano</p>', unsafe_allow_html=True)
-    col_a, col_v = st.columns([1,1])
-    with col_a:
-        novo_ano = st.number_input("Ano", value=ano_atual+1, min_value=2000, max_value=2100,
-                                   step=1, format="%d", label_visibility="collapsed", key="novo_ano")
-    with col_v:
-        novo_ufir = st.number_input("UFIR", value=5.0000, min_value=0.0001, step=0.0001,
-                                    format="%.4f", label_visibility="collapsed", key="novo_ufir")
-    if st.button("➕ Adicionar", use_container_width=True):
-        st.session_state.ufir_table[int(novo_ano)] = novo_ufir
-        st.success(f"Ano {int(novo_ano)} adicionado com UFIR {novo_ufir:.4f}")
-
-    # ── Apagar ano ──
-    st.markdown('<p class="sidebar-section-title" style="margin-top:12px;">🗑️ Apagar Ano</p>', unsafe_allow_html=True)
-    anos_apagar = [a for a in sorted(st.session_state.ufir_table.keys(), reverse=True)
-                   if a != ano_atual]  # protege o ano atual
-    if anos_apagar:
-        ano_apagar_sel = st.selectbox("Selecionar ano para apagar", options=anos_apagar,
-                                      key="ano_apagar", label_visibility="collapsed")
-        if st.button("🗑️ Apagar", use_container_width=True, type="secondary"):
-            del st.session_state.ufir_table[ano_apagar_sel]
-            st.success(f"Ano {ano_apagar_sel} removido.")
-            st.rerun()
-    else:
-        st.caption("Sem anos para apagar (ano atual protegido)")
-
-    # Sincroniza para uso no cálculo
-    UFIR_TABLE.update(st.session_state.ufir_table)
-    ufir_ano = float(st.session_state.ufir_table.get(ano_sel, ufir_ano))
+    ufir_ano = float(st.session_state.ufir_table.get(ano_atual, list(st.session_state.ufir_table.values())[-1]))
 
     st.markdown("---")
     st.markdown('<p class="sidebar-section-title">💰 IRRF</p>', unsafe_allow_html=True)

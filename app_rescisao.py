@@ -540,8 +540,9 @@ def audit(df_f, grp, ann, calc, val_col, nat_col, ufir_ano):
 # ── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f'<img src="data:image/png;base64,{LOGO_SIDEBAR_B64}" style="height:36px;width:auto;margin-bottom:16px;display:block;">', unsafe_allow_html=True)
-    st.markdown('<p class="sidebar-section-title">📂 Arquivo</p>', unsafe_allow_html=True)
-    uploaded = st.file_uploader("Planilha do ERP", type=["xls","xlsx"], label_visibility="collapsed")
+    st.markdown('<p class="sidebar-section-title">📂 Arquivos</p>', unsafe_allow_html=True)
+    uploaded = st.file_uploader("Planilha 1 (obrigatória)", type=["xls","xlsx"], label_visibility="collapsed", key="file1")
+    uploaded2 = st.file_uploader("Planilha 2 (opcional — 2ª conta)", type=["xls","xlsx"], label_visibility="collapsed", key="file2")
     st.markdown("---")
     st.markdown('<p class="sidebar-section-title">📅 UFIR-RJ</p>', unsafe_allow_html=True)
     ano_atual = datetime.now().year
@@ -591,25 +592,43 @@ if not uploaded:
       <h3 style="color:{AZUL_ESC};font-weight:800;margin-bottom:8px;">Carregue a planilha do ERP</h3>
       <p style="color:#999;max-width:400px;margin:0 auto;line-height:1.6;">
         Importe o arquivo <b>.xls</b> ou <b>.xlsx</b> exportado do sistema financeiro.<br>
-        A planilha deve conter as colunas de comissão do representante.
+        Se o representante tiver duas contas, carregue as duas planilhas.
       </p>
     </div>
     """, unsafe_allow_html=True)
     st.stop()
 
 # ── PROCESSAR ────────────────────────────────────────────────────────────────
-try:
-    df, val_col, nat_col, baixa_col, concil_col, neg_col, parceiro_col, nome_col = load_file(uploaded)
-except Exception as e:
-    st.error(f"Erro ao ler o arquivo: {e}")
+def processar_arquivo(file):
+    try:
+        df, val_col, nat_col, baixa_col, concil_col, neg_col, parceiro_col, nome_col = load_file(file)
+    except Exception as e:
+        st.error(f"Erro ao ler o arquivo: {e}")
+        return None, None, None, None, None, None, None, None
+    if val_col is None:
+        st.error("Coluna de valor não encontrada. Verifique se o arquivo contém 'Vlr do Desdobramento'.")
+        return None, None, None, None, None, None, None, None
+    df_f = filter_commissions(df, val_col, nat_col, baixa_col, concil_col)
+    return df_f, val_col, nat_col, baixa_col, concil_col, neg_col, parceiro_col, nome_col
+
+result1 = processar_arquivo(uploaded)
+df_f, val_col, nat_col, baixa_col, concil_col, neg_col, parceiro_col, nome_col = result1
+
+if df_f is None or len(df_f) == 0:
+    st.warning("Nenhum registro de comissão encontrado na planilha 1.")
     st.stop()
 
-if val_col is None:
-    st.error("Coluna de valor não encontrada. Verifique se o arquivo contém 'Vlr do Desdobramento'.")
-    st.stop()
+# ── Planilha 2 (opcional) ──
+if uploaded2:
+    result2 = processar_arquivo(uploaded2)
+    df_f2, val_col2, *_ = result2
+    if df_f2 is not None and len(df_f2) > 0:
+        # Align columns and concatenate
+        df_f2 = df_f2.rename(columns={val_col2: val_col}) if val_col2 != val_col else df_f2
+        common_cols = [c for c in df_f.columns if c in df_f2.columns]
+        df_f = pd.concat([df_f[common_cols], df_f2[common_cols]], ignore_index=True)
+        st.sidebar.success(f"✅ Planilha 2 carregada: {len(df_f2)} registros somados")
 
-df_f = filter_commissions(df, val_col, nat_col, baixa_col, concil_col)
-# date_col kept for display in Dados Brutos
 date_col = concil_col or baixa_col or neg_col
 if len(df_f) == 0:
     st.warning("Nenhum registro de comissão encontrado.")
@@ -620,8 +639,16 @@ ufir_calculo = float(st.session_state.ufir_table.get(ano_atual, ufir_ano))
 ann  = build_annual(grp, ufir_calculo)
 calc = calcular(ann, grp, reter_irrf, ufir_calculo)
 
-rc_code = str(df_f[parceiro_col].iloc[0]) if parceiro_col and parceiro_col in df_f.columns else "—"
-rc_nome = str(df_f[nome_col].iloc[0]) if nome_col and nome_col in df_f.columns else "—"
+if parceiro_col and parceiro_col in df_f.columns:
+    codigos_unicos = df_f[parceiro_col].dropna().unique()
+    rc_code = " + ".join([str(int(c)) if str(c).replace(".","").isdigit() else str(c) for c in codigos_unicos[:2]])
+else:
+    rc_code = "—"
+if nome_col and nome_col in df_f.columns:
+    nomes_unicos = df_f[nome_col].dropna().unique()
+    rc_nome = " + ".join([str(n) for n in nomes_unicos[:2]])
+else:
+    rc_nome = "—"
 p_ini   = f"{MESES_PT[int(grp['Mês'].iloc[0])]}/{int(grp['Ano'].iloc[0])}"
 p_fim   = f"{MESES_PT[int(grp['Mês'].iloc[-1])]}/{int(grp['Ano'].iloc[-1])}"
 
@@ -952,15 +979,11 @@ with tab6:
     </div>
     """, unsafe_allow_html=True)
 
-    col_e, col_c = st.columns(2)
-    with col_e:
-        elaborado_por = st.text_input("Elaborado por", value="Beatriz Esteves")
-        cargo_elab    = st.text_input("Cargo", value="Gerente Financeira")
-    with col_c:
-        aprovado_por  = st.text_input("Aprovado por (Controller)", value="")
-        cargo_aprov   = st.text_input("Cargo (Aprovador)", value="Controller")
-
     obs = st.text_area("Observações (opcional)", placeholder="Insira observações relevantes para este processo de rescisão...")
+    elaborado_por = ""
+    cargo_elab = ""
+    aprovado_por = ""
+    cargo_aprov = ""
 
     if st.button("🖨️ Gerar PDF Profissional", type="primary", use_container_width=True):
 
@@ -1278,40 +1301,7 @@ with tab6:
                     c.drawString(col2_x+0.3*M, y2-0.28*M, line_txt)
                     y2 -= 0.36*M
 
-            # ════════════════════════════════════════════════════════════════
-            # 4. ASSINATURAS — sempre fixas no rodapé
-            # ════════════════════════════════════════════════════════════════
-            y_ass = 3.5*M   # sempre 3.5 cm do fundo
-
-            c.setFillColor(CZ)
-            c.roundRect(LM, y_ass - 0.15*M, CW, 2.8*M, 3, fill=1, stroke=0)
-            c.setStrokeColor(CZ2)
-            c.setLineWidth(0.4)
-            c.roundRect(LM, y_ass - 0.15*M, CW, 2.8*M, 3, fill=0, stroke=1)
-
-            ass_section_w = CW/2 - 0.5*M
-            for j, (nome, cargo) in enumerate([
-                (elab or "________________________________", cargo_e),
-                (aprov or "________________________________", cargo_a)
-            ]):
-                ax = LM + 0.8*M + j*(ass_section_w + 1.0*M)
-                # Linha assinatura
-                c.setStrokeColor(AZUL)
-                c.setLineWidth(1)
-                c.line(ax, y_ass + 1.8*M, ax + ass_section_w, y_ass + 1.8*M)
-                # Nome
-                c.setFont("Helvetica-Bold", 9)
-                c.setFillColor(AZUL)
-                c.drawCentredString(ax + ass_section_w/2, y_ass + 1.5*M, nome)
-                # Cargo
-                c.setFont("Helvetica", 8)
-                c.setFillColor(CZ3)
-                c.drawCentredString(ax + ass_section_w/2, y_ass + 1.15*M, cargo)
-                # Data
-                c.setFont("Helvetica", 8)
-                c.setFillColor(AZUL)
-                c.drawCentredString(ax + ass_section_w/2, y_ass + 0.6*M,
-                                    "Data: _____ / _____ / ____________")
+            # Sem bloco de assinaturas — assinatura eletrônica
 
             # ════════════════════════════════════════════════════════════════
             # 5. RODAPÉ

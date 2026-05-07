@@ -54,7 +54,7 @@ st.markdown(f"""
 }}
 
 /* Remove Streamlit default padding */
-.block-container {{ padding-top: 0 !important; }}
+.block-container {{ padding-top: 0 !important; padding-left: 1rem !important; padding-right: 1rem !important; max-width: 100% !important; }}
 header[data-testid="stHeader"] {{ background: {AZUL_ESC}; }}
 
 /* ── TOPBAR ── */
@@ -95,7 +95,7 @@ header[data-testid="stHeader"] {{ background: {AZUL_ESC}; }}
     border-left: 5px solid {AMARELO};
     border-radius: 0 10px 10px 0;
     padding: 14px 24px;
-    margin: 16px 0;
+    margin: 20px 0 12px 0;
     display: flex;
     gap: 32px;
     align-items: center;
@@ -209,29 +209,31 @@ header[data-testid="stHeader"] {{ background: {AZUL_ESC}; }}
 
 /* ── PAGE HEADER TITLE ── */
 .lle-header-title {{
-    background: linear-gradient(135deg, {AZUL_ESC} 0%, {AZUL} 100%);
-    padding: 18px 28px;
+    background: {AZUL_ESC};
+    padding: 16px 28px 16px 28px;
     display: flex;
     align-items: center;
     gap: 14px;
     margin: 0 -1rem 0 -1rem;
-    border-bottom: 3px solid {AMARELO};
+    border-bottom: 4px solid {AMARELO};
 }}
 .lle-header-icon {{
-    font-size: 1.5rem;
+    font-size: 1.4rem;
+    flex-shrink: 0;
 }}
 .lle-header-main {{
     color: white;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 800;
     letter-spacing: 0.3px;
+    line-height: 1.2;
 }}
 .lle-header-sub {{
-    color: rgba(255,255,255,0.65);
-    font-size: 0.72rem;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.7rem;
     font-weight: 500;
-    margin-top: 2px;
-    letter-spacing: 0.5px;
+    margin-top: 3px;
+    letter-spacing: 0.4px;
 }}
 
 /* ── FOOTER ── */
@@ -256,11 +258,29 @@ section[data-testid="stSidebar"] div {{
     color: rgba(255,255,255,0.88) !important;
     font-size: 0.78rem !important;
 }}
-section[data-testid="stSidebar"] input {{
+section[data-testid="stSidebar"] input,
+section[data-testid="stSidebar"] .stSelectbox select,
+section[data-testid="stSidebar"] [data-baseweb="select"] {{
     background: rgba(255,255,255,0.12) !important;
     color: white !important;
-    border-color: rgba(255,255,255,0.2) !important;
+    border-color: rgba(255,255,255,0.25) !important;
     font-size: 0.82rem !important;
+}}
+section[data-testid="stSidebar"] [data-baseweb="select"] * {{
+    background: #1B2F6B !important;
+    color: white !important;
+}}
+section[data-testid="stSidebar"] [data-baseweb="input"] {{
+    background: rgba(255,255,255,0.1) !important;
+}}
+section[data-testid="stSidebar"] [data-baseweb="input"] input {{
+    color: white !important;
+    -webkit-text-fill-color: white !important;
+}}
+section[data-testid="stSidebar"] .stNumberInput input {{
+    color: white !important;
+    -webkit-text-fill-color: white !important;
+    background: transparent !important;
 }}
 section[data-testid="stSidebar"] .stFileUploader {{
     background: rgba(255,255,255,0.06);
@@ -492,6 +512,20 @@ with st.sidebar:
         st.session_state.ufir_table[int(novo_ano)] = novo_ufir
         st.success(f"Ano {int(novo_ano)} adicionado com UFIR {novo_ufir:.4f}")
 
+    # ── Apagar ano ──
+    st.markdown('<p class="sidebar-section-title" style="margin-top:12px;">🗑️ Apagar Ano</p>', unsafe_allow_html=True)
+    anos_apagar = [a for a in sorted(st.session_state.ufir_table.keys(), reverse=True)
+                   if a != ano_atual]  # protege o ano atual
+    if anos_apagar:
+        ano_apagar_sel = st.selectbox("Selecionar ano para apagar", options=anos_apagar,
+                                      key="ano_apagar", label_visibility="collapsed")
+        if st.button("🗑️ Apagar", use_container_width=True, type="secondary"):
+            del st.session_state.ufir_table[ano_apagar_sel]
+            st.success(f"Ano {ano_apagar_sel} removido.")
+            st.rerun()
+    else:
+        st.caption("Sem anos para apagar (ano atual protegido)")
+
     # Sincroniza para uso no cálculo
     UFIR_TABLE.update(st.session_state.ufir_table)
     ufir_ano = float(st.session_state.ufir_table.get(ano_sel, ufir_ano))
@@ -706,7 +740,7 @@ with tab4:
         if "⚠️" in str(val): return "color:#F57C00;font-weight:700"
         if "❌" in str(val): return "color:#E53935;font-weight:700"
         return ""
-    st.dataframe(audit_df.style.applymap(color_st, subset=["Status"]),
+    st.dataframe(audit_df.style.map(color_st, subset=["Status"]),
                  hide_index=True, use_container_width=True, height=580)
 
 # ══════════════ AUDITORIA DETALHADA ═════════════════════════════════════════

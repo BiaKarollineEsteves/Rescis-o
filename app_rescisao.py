@@ -261,7 +261,7 @@ header[data-testid="stHeader"] {{ background: {AZUL_ESC}; }}
 
 /* ── SIDEBAR ── */
 section[data-testid="stSidebar"] {{
-    background: {AZUL_ESC} !important;
+    background: #041747 !important;
 }}
 section[data-testid="stSidebar"] p,
 section[data-testid="stSidebar"] span,
@@ -273,7 +273,7 @@ section[data-testid="stSidebar"] div {{
 /* Sidebar inputs - dark bg, white text */
 section[data-testid="stSidebar"] input,
 section[data-testid="stSidebar"] textarea {{
-    background: #0F1F4A !important;
+    background: #041747 !important;
     color: #F5A800 !important;
     -webkit-text-fill-color: #F5A800 !important;
     border: 1px solid rgba(255,255,255,0.2) !important;
@@ -282,12 +282,12 @@ section[data-testid="stSidebar"] textarea {{
     font-weight: 600 !important;
 }}
 section[data-testid="stSidebar"] [data-baseweb="input"] {{
-    background: #0F1F4A !important;
+    background: #041747 !important;
     border: 1px solid rgba(255,255,255,0.2) !important;
     border-radius: 6px !important;
 }}
 section[data-testid="stSidebar"] [data-baseweb="select"] > div:first-child {{
-    background: #0F1F4A !important;
+    background: #041747 !important;
     border: 1px solid rgba(255,255,255,0.2) !important;
     color: {AMARELO} !important;
 }}
@@ -296,17 +296,17 @@ section[data-testid="stSidebar"] [data-baseweb="select"] span {{
     -webkit-text-fill-color: {AMARELO} !important;
 }}
 section[data-testid="stSidebar"] [data-baseweb="popover"] {{
-    background: {AZUL_ESC} !important;
+    background: #041747 !important;
 }}
 section[data-testid="stSidebar"] [role="option"] {{
-    background: #0F1F4A !important;
+    background: #041747 !important;
     color: white !important;
 }}
 section[data-testid="stSidebar"] [role="option"]:hover {{
     background: {AZUL} !important;
 }}
 section[data-testid="stSidebar"] .stNumberInput > div {{
-    background: #0F1F4A !important;
+    background: #041747 !important;
     border: 1px solid rgba(255,255,255,0.2) !important;
     border-radius: 6px !important;
 }}
@@ -319,16 +319,16 @@ section[data-testid="stSidebar"] button[data-testid="stNumberInputStepDown"] {{
 }}
 /* data_editor in sidebar */
 section[data-testid="stSidebar"] .stDataFrame {{
-    background: #0F1F4A !important;
+    background: #041747 !important;
 }}
 section[data-testid="stSidebar"] .stDataFrame td,
 section[data-testid="stSidebar"] .stDataFrame th {{
     color: white !important;
-    background: #0F1F4A !important;
+    background: #041747 !important;
     font-size: 0.75rem !important;
 }}
 section[data-testid="stSidebar"] .stFileUploader {{
-    background: rgba(255,255,255,0.06);
+    background: #041747;
     border-radius: 8px;
     padding: 8px;
     border: 1px dashed rgba(255,255,255,0.2);
@@ -968,354 +968,320 @@ with tab6:
         def gerar_pdf(rc_nome, rc_code, p_ini, p_fim, ann, grp, calc,
                       reter_irrf, ufir_calculo, ano_atual,
                       elab, cargo_e, aprov, cargo_a, obs_txt, logo_b64):
+            """Gera PDF paisagem compacto — mesmo formato da planilha Excel."""
+            from reportlab.lib.pagesizes import landscape, A4
+            from reportlab.pdfgen import canvas as cv
             buf_pdf = io.BytesIO()
-            W, H = A4
 
-            # Colors — use module-level constants for class scope compatibility
-            AZUL_D = PDF_AZUL_D
-            AZUL   = PDF_AZUL
-            AMAR   = PDF_AMAR
-            VERDE  = PDF_VERDE
-            CINZA  = PDF_CINZA
-            CINZA2 = PDF_CINZA2
-            BRANCO = PDF_BRANCO
-            PRETO  = PDF_PRETO
-            CINZA3 = PDF_CINZA3
+            # ── Página paisagem ──
+            W, H = landscape(A4)   # 841.89 x 595.28 pt
+            M = 28.35              # 1 cm em pontos
+            c = cv.Canvas(buf_pdf, pagesize=(W, H))
 
-            # ── Canvas-based PDF with custom header/footer ──
-            class NumberedCanvas(rl_canvas.Canvas):
-                def __init__(self, *args, **kwargs):
-                    rl_canvas.Canvas.__init__(self, *args, **kwargs)
-                    self._saved_page_states = []
-                def showPage(self):
-                    self._saved_page_states.append(dict(self.__dict__))
-                    self._startPage()
-                def save(self):
-                    num_pages = len(self._saved_page_states)
-                    for state in self._saved_page_states:
-                        self.__dict__.update(state)
-                        self.draw_page_number(num_pages)
-                        rl_canvas.Canvas.showPage(self)
-                    rl_canvas.Canvas.save(self)
-                def draw_page_number(self, page_count):
-                    self.setFont("Helvetica", 8)
-                    self.setFillColor(PDF_CINZA3)
-                    self.drawRightString(595 - 2*28.35, 1.2*28.35,
-                        f"Página {self._pageNumber} de {page_count}")
-                    self.setStrokeColor(PDF_CINZA2)
-                    self.line(2*28.35, 1.6*28.35, 595-2*28.35, 1.6*28.35)
-                    self.setFont("Helvetica", 7)
-                    self.setFillColor(PDF_CINZA3)
-                    self.drawString(2*28.35, 1.0*28.35,
-                        "Grupo LLE · Departamento Financeiro · Rescisão conforme Lei 4.886/65")
-
-            def header(c, doc):
-                c.saveState()
-                # Blue header bar
-                c.setFillColor(AZUL_D)
-                c.rect(0, H-3.2*cm, W, 3.2*cm, fill=1, stroke=0)
-                # Logo
-                if logo_b64:
-                    try:
-                        logo_bytes = base64.b64decode(logo_b64)
-                        logo_buf = io.BytesIO(logo_bytes)
-                        c.drawImage(logo_buf, 1.8*cm, H-2.8*cm, width=4.5*cm, height=2.2*cm,
-                                   preserveAspectRatio=True, mask='auto')
-                    except: pass
-                # Title
-                c.setFont("Helvetica-Bold", 13)
-                c.setFillColor(BRANCO)
-                c.drawString(7*cm, H-1.6*cm, "RESCISÃO DE REPRESENTANTE COMERCIAL")
-                c.setFont("Helvetica", 9)
-                c.setFillColor(colors.HexColor("#AABBDD"))
-                c.drawString(7*cm, H-2.2*cm, "Lei 4.886/65 · Departamento Financeiro")
-                # Yellow accent bar
-                c.setFillColor(AMAR)
-                c.rect(0, H-3.4*cm, W, 0.22*cm, fill=1, stroke=0)
-                c.restoreState()
-
-            def footer_first(c, doc):
-                pass  # handled by NumberedCanvas
-
-            # Document
-            frame = Frame(2*cm, 2*cm, W-4*cm, H-5.5*cm, id='main')
-            template = PageTemplate(id='main', frames=frame, onPage=header)
-            doc = BaseDocTemplate(buf_pdf, pagesize=A4,
-                                   rightMargin=2*cm, leftMargin=2*cm,
-                                   topMargin=4*cm, bottomMargin=2.5*cm)
-            doc.addPageTemplates([template])
-
-            # Styles
-            def sty(name, **kw):
-                return ParagraphStyle(name, **kw)
-
-            S_TITLE   = sty('title',   fontName='Helvetica-Bold', fontSize=11, textColor=AZUL_D, spaceAfter=4)
-            S_SECHEAD = sty('sechead', fontName='Helvetica-Bold', fontSize=9,  textColor=AZUL,   spaceAfter=3, spaceBefore=10)
-            S_BODY    = sty('body',    fontName='Helvetica',      fontSize=9,  textColor=PRETO,  spaceAfter=2)
-            S_SMALL   = sty('small',   fontName='Helvetica',      fontSize=8,  textColor=CINZA3, spaceAfter=2)
-            S_CENTER  = sty('center',  fontName='Helvetica',      fontSize=9,  alignment=TA_CENTER)
-            S_RIGHT   = sty('right',   fontName='Helvetica',      fontSize=9,  alignment=TA_RIGHT)
-            S_BOLD    = sty('bold',    fontName='Helvetica-Bold', fontSize=9,  textColor=PRETO)
-            S_WHITE   = sty('white',   fontName='Helvetica-Bold', fontSize=9,  textColor=BRANCO)
-            S_NOTA    = sty('nota',    fontName='Helvetica-Oblique', fontSize=7.5, textColor=CINZA3, spaceAfter=2)
+            # Cores
+            AZUL_D  = PDF_AZUL_D
+            AMAR    = PDF_AMAR
+            BRANCO  = PDF_BRANCO
+            CINZA_L = PDF_CINZA
+            CINZA2  = PDF_CINZA2
+            VERDE   = PDF_VERDE
 
             def brl(v):
-                return f"R$ {float(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
+                try:
+                    return f"R$ {float(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
+                except:
+                    return "—"
 
-            story = []
+            # ── Cabeçalho ───────────────────────────────────────────────────
+            # Barra azul topo
+            c.setFillColor(AZUL_D)
+            c.rect(0, H - 2.8*M, W, 2.8*M, fill=1, stroke=0)
+            # Linha amarela
+            c.setFillColor(AMAR)
+            c.rect(0, H - 2.95*M, W, 0.18*M, fill=1, stroke=0)
 
-            # ── Identificação ──
+            # Logo no cabeçalho
+            if logo_b64:
+                try:
+                    logo_bytes = base64.b64decode(logo_b64)
+                    logo_buf = io.BytesIO(logo_bytes)
+                    logo_w = 5.5*M
+                    logo_h = 2.0*M
+                    c.drawImage(logo_buf, 1.2*M, H - 2.6*M,
+                                width=logo_w, height=logo_h,
+                                preserveAspectRatio=True, mask='auto')
+                except:
+                    pass
+
+            # Título no cabeçalho
+            c.setFillColor(BRANCO)
+            c.setFont("Helvetica-Bold", 13)
+            c.drawString(7.5*M, H - 1.5*M, "RESCISÃO DE REPRESENTANTE COMERCIAL")
+            c.setFont("Helvetica", 8)
+            c.setFillColor(PDF_CINZA3)
+            c.drawString(7.5*M, H - 2.1*M, "Grupo LLE  ·  Departamento Financeiro  ·  Lei 4.886/65")
+
+            # Data no canto direito
+            c.setFillColor(BRANCO)
+            c.setFont("Helvetica", 8)
             data_hoje = datetime.now().strftime("%d/%m/%Y")
-            id_data = [
-                ["Representante Comercial:", rc_nome, "Código:", str(rc_code)],
-                ["Período das Comissões:", f"{p_ini} a {p_fim}", "Data do Cálculo:", data_hoje],
-                ["UFIR-RJ Ano Atual:", f"{ufir_calculo:.4f}",  "Ano de Referência:", str(ano_atual)],
+            c.drawRightString(W - 1.5*M, H - 1.5*M, data_hoje)
+
+            # ── Faixa de identificação ───────────────────────────────────────
+            y_id = H - 3.6*M
+            c.setFillColor(CINZA_L)
+            c.roundRect(1.2*M, y_id - 0.9*M, W - 2.4*M, 1.0*M, 3, fill=1, stroke=0)
+
+            c.setFont("Helvetica-Bold", 7)
+            c.setFillColor(AZUL_D)
+            labels_id = ["REPRESENTANTE", "CÓDIGO", "PERÍODO", "REGISTROS", f"UFIR-RJ {ano_atual}"]
+            values_id = [rc_nome, str(rc_code), f"{p_ini} a {p_fim}", str(len(grp)), f"{ufir_calculo:.4f}"]
+            col_w = (W - 2.4*M) / len(labels_id)
+            for j, (lb, vl) in enumerate(zip(labels_id, values_id)):
+                x = 1.6*M + j * col_w
+                c.setFont("Helvetica-Bold", 6.5)
+                c.setFillColor(PDF_CINZA3)
+                c.drawString(x, y_id - 0.35*M, lb)
+                c.setFont("Helvetica-Bold", 8)
+                c.setFillColor(AZUL_D)
+                c.drawString(x, y_id - 0.72*M, vl[:45])
+
+            # ── Área principal (2 colunas) ──────────────────────────────────
+            y_body = y_id - 1.4*M
+            col1_x = 1.2*M
+            col2_x = W * 0.5 + 0.5*M
+            col1_w = W * 0.5 - 1.7*M
+            col2_w = W * 0.5 - 1.7*M
+
+            # ─ helper: section header ─
+            def sec_header(x, y, w, text):
+                c.setFillColor(AZUL_D)
+                c.rect(x, y - 0.5*M, w, 0.5*M, fill=1, stroke=0)
+                c.setFillColor(BRANCO)
+                c.setFont("Helvetica-Bold", 8)
+                c.drawString(x + 0.3*M, y - 0.34*M, text)
+                return y - 0.6*M
+
+            # ─ helper: table row ─
+            def tbl_row(x, y, w, label, value, bold=False, bg=None, text_color=None):
+                if bg:
+                    c.setFillColor(bg)
+                    c.rect(x, y - 0.42*M, w, 0.42*M, fill=1, stroke=0)
+                font = "Helvetica-Bold" if bold else "Helvetica"
+                col = text_color if text_color else AZUL_D
+                c.setFont(font, 8)
+                c.setFillColor(col)
+                c.drawString(x + 0.25*M, y - 0.27*M, label)
+                c.drawRightString(x + w - 0.25*M, y - 0.27*M, value)
+                return y - 0.44*M
+
+            def divider(x, y, w):
+                c.setStrokeColor(CINZA2)
+                c.setLineWidth(0.3)
+                c.line(x, y - 0.05*M, x + w, y - 0.05*M)
+                return y - 0.15*M
+
+            # ════════════════════════════════════════════════
+            # COLUNA 1 — Comissões por Ano + Cálculo
+            # ════════════════════════════════════════════════
+            y1 = sec_header(col1_x, y_body, col1_w, "COMISSÕES BRUTAS E CORREÇÃO UFIR-RJ")
+
+            # Header da mini-tabela
+            c.setFillColor(CINZA2)
+            c.rect(col1_x, y1 - 0.38*M, col1_w, 0.38*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 7)
+            c.setFillColor(AZUL_D)
+            cw = col1_w / 4
+            for j, h in enumerate(["ANO","BRUTA","UFIR","CORRIGIDA"]):
+                c.drawCentredString(col1_x + cw*j + cw/2, y1 - 0.26*M, h)
+            y1 -= 0.44*M
+
+            # Rows
+            for idx, (_, row) in enumerate(ann.iterrows()):
+                bg_row = CINZA_L if idx % 2 == 0 else BRANCO
+                c.setFillColor(bg_row)
+                c.rect(col1_x, y1 - 0.38*M, col1_w, 0.38*M, fill=1, stroke=0)
+                c.setFont("Helvetica", 7.5)
+                c.setFillColor(AZUL_D)
+                vals = [str(int(row["Ano"])),
+                        brl(row["Comissão Bruta"]),
+                        f"{row['UFIR do Ano']:.4f}" if pd.notna(row['UFIR do Ano']) else "—",
+                        brl(row["Comissão Corrigida"])]
+                for j, v in enumerate(vals):
+                    c.drawCentredString(col1_x + cw*j + cw/2, y1 - 0.26*M, v)
+                y1 -= 0.4*M
+
+            # Total row
+            c.setFillColor(AZUL_D)
+            c.rect(col1_x, y1 - 0.42*M, col1_w, 0.42*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 7.5)
+            c.setFillColor(BRANCO)
+            totals = ["TOTAL", brl(calc['tb']), "—", brl(calc['tc'])]
+            for j, v in enumerate(totals):
+                c.drawCentredString(col1_x + cw*j + cw/2, y1 - 0.28*M, v)
+            y1 -= 0.52*M
+
+            # Nota correção
+            c.setFont("Helvetica-Oblique", 6.5)
+            c.setFillColor(PDF_CINZA3)
+            c.drawString(col1_x, y1 - 0.25*M,
+                f"* Corrigida = UFIR {ano_atual} × Bruta ÷ UFIR_Ano  (Dec. 2394/98)")
+            y1 -= 0.55*M
+
+            # ── Cálculo da Indenização (coluna 1 continuação) ──
+            y1 = sec_header(col1_x, y1, col1_w, "CÁLCULO DA INDENIZAÇÃO")
+
+            calc_items = [
+                ("Base de Indenização (Total Corrigido)", brl(calc['tc']), False, None),
+                ("÷ 12 = Indenização 1/12 Avos", brl(calc['ind112']), False, CINZA_L),
+                ("", "", False, None),
+                (f"Base Aviso Prévio (3 últ. meses)", brl(calc['bap']), False, None),
+                (f"  → {' · '.join(calc['u3']['Mês/Ano'].tolist())}", "", False, None),
+                ("÷ 3 = Aviso Prévio 1/3", brl(calc['avp']), False, CINZA_L),
             ]
-            t_id = Table(id_data, colWidths=[4.5*cm, 7*cm, 3.5*cm, 3.5*cm])
-            t_id.setStyle(TableStyle([
-                ('FONTNAME',  (0,0),(-1,-1), 'Helvetica'),
-                ('FONTNAME',  (0,0),(0,-1),  'Helvetica-Bold'),
-                ('FONTNAME',  (2,0),(2,-1),  'Helvetica-Bold'),
-                ('FONTSIZE',  (0,0),(-1,-1), 8.5),
-                ('TEXTCOLOR', (0,0),(0,-1),  CINZA3),
-                ('TEXTCOLOR', (2,0),(2,-1),  CINZA3),
-                ('TEXTCOLOR', (1,0),(1,-1),  PRETO),
-                ('TEXTCOLOR', (3,0),(3,-1),  PRETO),
-                ('BACKGROUND',(0,0),(-1,-1), CINZA),
-                ('ROWBACKGROUNDS',(0,0),(-1,-1), [CINZA, BRANCO, CINZA]),
-                ('TOPPADDING',(0,0),(-1,-1), 5),
-                ('BOTTOMPADDING',(0,0),(-1,-1), 5),
-                ('LEFTPADDING',(0,0),(-1,-1), 8),
-                ('ROUNDEDCORNERS', [4]),
-                ('BOX', (0,0),(-1,-1), 0.5, CINZA2),
-            ]))
-            story.append(t_id)
-            story.append(Spacer(1, 0.4*cm))
+            for lbl, val, bold, bg in calc_items:
+                if lbl == "":
+                    y1 -= 0.15*M
+                    continue
+                y1 = tbl_row(col1_x, y1, col1_w, lbl, val, bold, bg)
 
-            # ── Seção 1: Comissões por Ano ──
-            story.append(Paragraph("1. COMISSÕES BRUTAS E CORREÇÃO MONETÁRIA (UFIR-RJ)", S_SECHEAD))
-            story.append(HRFlowable(width="100%", thickness=1, color=AMAR, spaceAfter=6))
+            # Indenização Bruta — destaque
+            c.setFillColor(AZUL_D)
+            c.rect(col1_x, y1 - 0.5*M, col1_w, 0.5*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 9)
+            c.setFillColor(BRANCO)
+            c.drawString(col1_x + 0.3*M, y1 - 0.34*M, "INDENIZAÇÃO BRUTA")
+            c.drawRightString(col1_x + col1_w - 0.3*M, y1 - 0.34*M, brl(calc['bruta']))
+            y1 -= 0.6*M
 
-            hdr_ann = [
-                [Paragraph("ANO", S_WHITE),
-                 Paragraph("COMISSÃO BRUTA", S_WHITE),
-                 Paragraph("UFIR DO ANO", S_WHITE),
-                 Paragraph("UFIR ATUAL", S_WHITE),
-                 Paragraph("COMISSÃO CORRIGIDA", S_WHITE),
-                 Paragraph("VARIAÇÃO", S_WHITE)]
-            ]
-            rows_ann = []
-            for _, row in ann.iterrows():
-                var = ((row['Comissão Corrigida']/row['Comissão Bruta'])-1)*100 if row['Comissão Bruta']>0 else 0
-                rows_ann.append([
-                    Paragraph(str(int(row['Ano'])), S_BOLD),
-                    Paragraph(brl(row['Comissão Bruta']), S_RIGHT),
-                    Paragraph(f"{row['UFIR do Ano']:.4f}", S_CENTER),
-                    Paragraph(f"{ufir_calculo:.4f}", S_CENTER),
-                    Paragraph(brl(row['Comissão Corrigida']), S_RIGHT),
-                    Paragraph(f"+{var:.2f}%", S_CENTER),
-                ])
-            total_var = ((calc['tc']/calc['tb'])-1)*100 if calc['tb']>0 else 0
-            rows_ann.append([
-                Paragraph("TOTAL", S_WHITE),
-                Paragraph(brl(calc['tb']), S_WHITE),
-                Paragraph("—", S_WHITE),
-                Paragraph("—", S_WHITE),
-                Paragraph(brl(calc['tc']), S_WHITE),
-                Paragraph(f"+{total_var:.2f}%", S_WHITE),
-            ])
-            t_ann = Table(hdr_ann + rows_ann, colWidths=[2*cm, 3.5*cm, 2.5*cm, 2.5*cm, 3.5*cm, 2.5*cm])
-            ts = [
-                ('BACKGROUND', (0,0), (-1,0), AZUL_D),
-                ('BACKGROUND', (0,-1),(-1,-1), AZUL),
-                ('ROWBACKGROUNDS', (0,1), (-1,-2), [BRANCO, CINZA]),
-                ('FONTNAME',  (0,0),(-1,-1), 'Helvetica'),
-                ('FONTSIZE',  (0,0),(-1,-1), 8),
-                ('ALIGN',     (0,0),(-1,-1), 'CENTER'),
-                ('VALIGN',    (0,0),(-1,-1), 'MIDDLE'),
-                ('TOPPADDING',(0,0),(-1,-1), 5),
-                ('BOTTOMPADDING',(0,0),(-1,-1), 5),
-                ('GRID',      (0,0),(-1,-1), 0.3, CINZA2),
-                ('BOX',       (0,0),(-1,-1), 1, AZUL_D),
-                ('LINEBELOW', (0,0),(-1,0), 2, AMAR),
-            ]
-            t_ann.setStyle(TableStyle(ts))
-            story.append(t_ann)
-            story.append(Paragraph("* Fórmula: Corrigida = UFIR_Atual × Bruta_Ano ÷ UFIR_Ano (Dec. Estadual 2394/98)", S_NOTA))
-            story.append(Spacer(1, 0.4*cm))
+            irrf_str = f"IRRF 15% ({'Retido' if calc['irrf']>0 else 'NÃO Retido'})"
+            y1 = tbl_row(col1_x, y1, col1_w, irrf_str, brl(calc['irrf']), False, CINZA_L if calc['irrf']==0 else None)
 
-            # ── Seção 2: Comissões Mensais ──
-            story.append(Paragraph("2. DETALHAMENTO MENSAL DAS COMISSÕES", S_SECHEAD))
-            story.append(HRFlowable(width="100%", thickness=1, color=AMAR, spaceAfter=6))
+            # Valor Líquido — destaque amarelo
+            c.setFillColor(AMAR)
+            c.rect(col1_x, y1 - 0.55*M, col1_w, 0.55*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 10)
+            c.setFillColor(AZUL_D)
+            c.drawString(col1_x + 0.3*M, y1 - 0.38*M, "VALOR LÍQUIDO A PAGAR")
+            c.drawRightString(col1_x + col1_w - 0.3*M, y1 - 0.38*M, brl(calc['liq']))
+            y1 -= 0.7*M
 
-            # Montar tabela mensal em 3 colunas lado a lado
-            meses_list = [(row['Mês/Ano'], brl(row['Valor'])) for _, row in grp.iterrows()]
-            # Dividir em grupos de 3 colunas
-            hdr_mes = [Paragraph("MÊS/ANO", S_WHITE), Paragraph("COMISSÃO", S_WHITE),
-                       Paragraph("MÊS/ANO", S_WHITE), Paragraph("COMISSÃO", S_WHITE),
-                       Paragraph("MÊS/ANO", S_WHITE), Paragraph("COMISSÃO", S_WHITE)]
-            # Pad to multiple of 3
-            while len(meses_list) % 3 != 0:
-                meses_list.append(("—", "—"))
-            rows_mes = [hdr_mes]
-            for i in range(0, len(meses_list), 3):
-                r = []
-                for j in range(3):
-                    r.extend([Paragraph(meses_list[i+j][0], S_CENTER),
-                               Paragraph(meses_list[i+j][1], S_RIGHT)])
-                rows_mes.append(r)
-            # Total
-            rows_mes.append([
-                Paragraph("TOTAL GERAL", S_WHITE), Paragraph(brl(calc['tb']), S_WHITE),
-                Paragraph("", S_WHITE), Paragraph("", S_WHITE),
-                Paragraph("", S_WHITE), Paragraph("", S_WHITE),
-            ])
-            t_mes = Table(rows_mes, colWidths=[2.8*cm, 2.8*cm, 2.8*cm, 2.8*cm, 2.8*cm, 2.8*cm])
-            t_mes.setStyle(TableStyle([
-                ('BACKGROUND',    (0,0), (-1,0),  AZUL_D),
-                ('BACKGROUND',    (0,-1),(-1,-1), AZUL),
-                ('ROWBACKGROUNDS',(0,1), (-1,-2), [BRANCO, CINZA]),
-                ('FONTNAME',      (0,0),(-1,-1),  'Helvetica'),
-                ('FONTSIZE',      (0,0),(-1,-1),  8),
-                ('ALIGN',         (0,0),(-1,-1),  'CENTER'),
-                ('VALIGN',        (0,0),(-1,-1),  'MIDDLE'),
-                ('TOPPADDING',    (0,0),(-1,-1),  5),
-                ('BOTTOMPADDING', (0,0),(-1,-1),  4),
-                ('GRID',          (0,0),(-1,-1),  0.3, CINZA2),
-                ('BOX',           (0,0),(-1,-1),  1, AZUL_D),
-                ('LINEBELOW',     (0,0),(-1,0),   2, AMAR),
-            ]))
-            story.append(t_mes)
-            story.append(Spacer(1, 0.4*cm))
+            # ════════════════════════════════════════════════
+            # COLUNA 2 — Comissões Mensais + Assinaturas
+            # ════════════════════════════════════════════════
+            y2 = sec_header(col2_x, y_body, col2_w, "COMISSÕES MENSAIS DETALHADAS")
 
-            # ── Seção 3: Base Aviso Prévio ──
-            story.append(Paragraph("3. BASE DO AVISO PRÉVIO — ÚLTIMOS 3 MESES", S_SECHEAD))
-            story.append(HRFlowable(width="100%", thickness=1, color=AMAR, spaceAfter=6))
-            u3_rows_pdf = calc['u3']
-            hdr_ap = [[Paragraph("MÊS", S_WHITE), Paragraph("VALOR", S_WHITE), Paragraph("% DO TOTAL", S_WHITE)]]
-            rows_ap = []
-            for _, row in u3_rows_pdf.iterrows():
-                pct = row['Valor']/calc['bap']*100
-                rows_ap.append([
-                    Paragraph(row['Mês/Ano'], S_CENTER),
-                    Paragraph(brl(row['Valor']), S_RIGHT),
-                    Paragraph(f"{pct:.1f}%", S_CENTER),
-                ])
-            rows_ap.append([
-                Paragraph("SOMA (Base Aviso Prévio)", S_WHITE),
-                Paragraph(brl(calc['bap']), S_WHITE),
-                Paragraph("100%", S_WHITE),
-            ])
-            t_ap = Table(hdr_ap + rows_ap, colWidths=[6*cm, 5*cm, 5*cm])
-            t_ap.setStyle(TableStyle([
-                ('BACKGROUND',    (0,0),(-1,0),  AZUL_D),
-                ('BACKGROUND',    (0,-1),(-1,-1), VERDE),
-                ('ROWBACKGROUNDS',(0,1),(-1,-2),  [BRANCO, CINZA]),
-                ('FONTNAME',      (0,0),(-1,-1),  'Helvetica'),
-                ('FONTSIZE',      (0,0),(-1,-1),  9),
-                ('ALIGN',         (0,0),(-1,-1),  'CENTER'),
-                ('VALIGN',        (0,0),(-1,-1),  'MIDDLE'),
-                ('TOPPADDING',    (0,0),(-1,-1),  6),
-                ('BOTTOMPADDING', (0,0),(-1,-1),  6),
-                ('GRID',          (0,0),(-1,-1),  0.3, CINZA2),
-                ('BOX',           (0,0),(-1,-1),  1, AZUL_D),
-                ('LINEBELOW',     (0,0),(-1,0),   2, AMAR),
-            ]))
-            story.append(t_ap)
-            story.append(Paragraph("* Base Aviso Prévio = soma dos 3 últimos meses de comissão efetivamente pagos (Art. 34 Lei 4.886/65)", S_NOTA))
-            story.append(Spacer(1, 0.4*cm))
+            # Mini-tabela mensal em 2 sub-colunas
+            meses = [(row['Mês/Ano'], brl(row['Valor'])) for _, row in grp.iterrows()]
+            half = (len(meses) + 1) // 2
+            sub_w = col2_w / 2 - 0.1*M
 
-            # ── Seção 4: Cálculo da Indenização ──
-            story.append(Paragraph("4. CÁLCULO DA INDENIZAÇÃO — RESUMO CONSOLIDADO", S_SECHEAD))
-            story.append(HRFlowable(width="100%", thickness=1, color=AMAR, spaceAfter=6))
+            # Headers
+            for sx in [col2_x, col2_x + sub_w + 0.2*M]:
+                c.setFillColor(CINZA2)
+                c.rect(sx, y2 - 0.35*M, sub_w, 0.35*M, fill=1, stroke=0)
+                c.setFont("Helvetica-Bold", 7)
+                c.setFillColor(AZUL_D)
+                c.drawString(sx + 0.2*M, y2 - 0.24*M, "MÊS/ANO")
+                c.drawRightString(sx + sub_w - 0.2*M, y2 - 0.24*M, "COMISSÃO")
+            y2 -= 0.4*M
 
-            calc_rows = [
-                [Paragraph("ITEM", S_WHITE), Paragraph("FÓRMULA", S_WHITE),
-                 Paragraph("VALOR", S_WHITE), Paragraph("BASE LEGAL", S_WHITE)],
-                ["Comissões Brutas (histórico)", "Σ comissões pagas", brl(calc['tb']), "ERP Financeiro"],
-                ["Comissões Corrigidas (UFIR)", "Σ (UFIR_atual × Bruta ÷ UFIR_ano)", brl(calc['tc']), "Dec. 2394/98"],
-                ["Indenização 1/12 Avos", "Total Corrigido ÷ 12", brl(calc['ind112']), "Art. 27 Lei 4.886/65"],
-                ["Base Aviso Prévio", "3 últimos meses pagos", brl(calc['bap']), "Art. 34 Lei 4.886/65"],
-                ["Aviso Prévio 1/3", "Base Aviso ÷ 3", brl(calc['avp']), "Art. 34 Lei 4.886/65"],
-                [Paragraph("INDENIZAÇÃO BRUTA", S_WHITE),
-                 Paragraph("1/12 Avos + Aviso Prévio", S_WHITE),
-                 Paragraph(brl(calc['bruta']), S_WHITE),
-                 Paragraph("Lei 4.886/65", S_WHITE)],
-                [f"IRRF (15%) — {'Retido' if calc['irrf']>0 else 'NÃO RETIDO'}", "Bruta × 15%", brl(calc['irrf']), "RIR Art. 718"],
-                [Paragraph("VALOR LÍQUIDO A PAGAR", ParagraphStyle('vl', fontName='Helvetica-Bold', fontSize=10, textColor=BRANCO)),
-                 Paragraph("Bruta − IRRF", S_WHITE),
-                 Paragraph(brl(calc['liq']), ParagraphStyle('vlv', fontName='Helvetica-Bold', fontSize=10, textColor=AMAR)),
-                 Paragraph("—", S_WHITE)],
-            ]
-            t_calc = Table(calc_rows, colWidths=[5.5*cm, 5*cm, 3*cm, 3*cm])
-            t_calc.setStyle(TableStyle([
-                ('BACKGROUND',    (0,0),(-1,0),   AZUL_D),
-                ('BACKGROUND',    (0,6),(-1,6),   AZUL),
-                ('BACKGROUND',    (0,8),(-1,8),   AZUL_D),
-                ('ROWBACKGROUNDS',(0,1),(-1,5),   [BRANCO, CINZA, BRANCO, CINZA, BRANCO]),
-                ('BACKGROUND',    (0,7),(-1,7),   CINZA),
-                ('FONTNAME',      (0,0),(-1,-1),  'Helvetica'),
-                ('FONTNAME',      (0,1),(0,5),    'Helvetica-Bold'),
-                ('TEXTCOLOR',     (0,1),(0,5),    AZUL_D),
-                ('FONTSIZE',      (0,0),(-1,-1),  8.5),
-                ('ALIGN',         (2,0),(-1,-1),  'RIGHT'),
-                ('ALIGN',         (3,0),(3,-1),   'CENTER'),
-                ('VALIGN',        (0,0),(-1,-1),  'MIDDLE'),
-                ('TOPPADDING',    (0,0),(-1,-1),  6),
-                ('BOTTOMPADDING', (0,0),(-1,-1),  6),
-                ('LEFTPADDING',   (0,0),(-1,-1),  8),
-                ('GRID',          (0,0),(-1,-1),  0.3, CINZA2),
-                ('BOX',           (0,0),(-1,-1),  1.5, AZUL_D),
-                ('LINEBELOW',     (0,0),(-1,0),   2, AMAR),
-                ('LINEABOVE',     (0,8),(-1,8),   2, AMAR),
-            ]))
-            story.append(t_calc)
-            story.append(Spacer(1, 0.5*cm))
+            left_col  = meses[:half]
+            right_col = meses[half:]
+            y2_r = y2
 
-            # ── Observações ──
-            if obs_txt.strip():
-                story.append(Paragraph("5. OBSERVAÇÕES", S_SECHEAD))
-                story.append(HRFlowable(width="100%", thickness=1, color=AMAR, spaceAfter=6))
-                story.append(Paragraph(obs_txt, S_BODY))
-                story.append(Spacer(1, 0.4*cm))
+            for idx, (mes, val) in enumerate(left_col):
+                bg_r = CINZA_L if idx % 2 == 0 else BRANCO
+                c.setFillColor(bg_r)
+                c.rect(col2_x, y2 - 0.35*M, sub_w, 0.35*M, fill=1, stroke=0)
+                c.setFont("Helvetica", 7.5)
+                c.setFillColor(AZUL_D)
+                c.drawString(col2_x + 0.2*M, y2 - 0.24*M, mes)
+                c.drawRightString(col2_x + sub_w - 0.2*M, y2 - 0.24*M, val)
+                y2 -= 0.36*M
 
-            # ── Assinaturas ──
-            n_sec = 6 if obs_txt.strip() else 5
-            story.append(Paragraph(f"{n_sec}. APROVAÇÕES E ASSINATURAS", S_SECHEAD))
-            story.append(HRFlowable(width="100%", thickness=1, color=AMAR, spaceAfter=10))
+            for idx, (mes, val) in enumerate(right_col):
+                bg_r = CINZA_L if idx % 2 == 0 else BRANCO
+                sx = col2_x + sub_w + 0.2*M
+                c.setFillColor(bg_r)
+                c.rect(sx, y2_r - 0.35*M, sub_w, 0.35*M, fill=1, stroke=0)
+                c.setFont("Helvetica", 7.5)
+                c.setFillColor(AZUL_D)
+                c.drawString(sx + 0.2*M, y2_r - 0.24*M, mes)
+                c.drawRightString(sx + sub_w - 0.2*M, y2_r - 0.24*M, val)
+                y2_r -= 0.36*M
 
-            ass_data = [
-                [Paragraph(elab or "_________________________", S_CENTER),
-                 Paragraph("", S_CENTER),
-                 Paragraph(aprov or "_________________________", S_CENTER)],
-                [Paragraph(f"<b>{elab or 'Elaborado por'}</b>", S_CENTER),
-                 Paragraph("", S_CENTER),
-                 Paragraph(f"<b>{aprov or 'Aprovado por'}</b>", S_CENTER)],
-                [Paragraph(cargo_e, ParagraphStyle('cargo', fontName='Helvetica', fontSize=8, textColor=CINZA3, alignment=TA_CENTER)),
-                 Paragraph("", S_CENTER),
-                 Paragraph(cargo_a, ParagraphStyle('cargo', fontName='Helvetica', fontSize=8, textColor=CINZA3, alignment=TA_CENTER))],
-                [Paragraph(f"Data: ___/___/______", S_SMALL),
-                 Paragraph("", S_CENTER),
-                 Paragraph(f"Data: ___/___/______", S_SMALL)],
-            ]
-            t_ass = Table(ass_data, colWidths=[7*cm, 2.5*cm, 7*cm])
-            t_ass.setStyle(TableStyle([
-                ('FONTNAME',      (0,0),(-1,-1), 'Helvetica'),
-                ('ALIGN',         (0,0),(-1,-1), 'CENTER'),
-                ('VALIGN',        (0,0),(-1,-1), 'MIDDLE'),
-                ('TOPPADDING',    (0,0),(-1,-1), 4),
-                ('BOTTOMPADDING', (0,0),(-1,-1), 4),
-                ('LINEABOVE',     (0,0),(0,0),   1, AZUL_D),
-                ('LINEABOVE',     (2,0),(2,0),   1, AZUL_D),
-                ('BOX',           (0,0),(0,-1),  0.5, CINZA2),
-                ('BOX',           (2,0),(2,-1),  0.5, CINZA2),
-                ('BACKGROUND',    (0,0),(0,-1),  CINZA),
-                ('BACKGROUND',    (2,0),(2,-1),  CINZA),
-            ]))
-            story.append(t_ass)
+            # Total geral meses
+            y2_final = min(y2, y2_r) - 0.1*M
+            c.setFillColor(AZUL_D)
+            c.rect(col2_x, y2_final - 0.4*M, col2_w, 0.4*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 8)
+            c.setFillColor(BRANCO)
+            c.drawString(col2_x + 0.3*M, y2_final - 0.28*M, "TOTAL GERAL")
+            c.drawRightString(col2_x + col2_w - 0.3*M, y2_final - 0.28*M, brl(calc['tb']))
+            y2_final -= 0.55*M
 
-            doc.build(story, canvasmaker=NumberedCanvas)
+            # Observações (se houver)
+            if obs_txt and obs_txt.strip():
+                y2_final = sec_header(col2_x, y2_final, col2_w, "OBSERVAÇÕES")
+                c.setFont("Helvetica", 7.5)
+                c.setFillColor(AZUL_D)
+                # Word wrap simples
+                words = obs_txt.split()
+                line = ""
+                for word in words:
+                    test = line + " " + word if line else word
+                    if c.stringWidth(test, "Helvetica", 7.5) < col2_w - 0.5*M:
+                        line = test
+                    else:
+                        c.drawString(col2_x + 0.2*M, y2_final - 0.25*M, line)
+                        y2_final -= 0.32*M
+                        line = word
+                if line:
+                    c.drawString(col2_x + 0.2*M, y2_final - 0.25*M, line)
+                    y2_final -= 0.32*M
+                y2_final -= 0.2*M
+
+            # ── Assinaturas ──────────────────────────────────────────────────
+            y_ass = max(min(y1, y2_final), 3.0*M) - 0.3*M
+
+            c.setFillColor(CINZA_L)
+            c.roundRect(1.2*M, y_ass - 1.8*M, W - 2.4*M, 1.8*M, 3, fill=1, stroke=0)
+
+            ass_w = (W - 2.4*M) / 2 - 0.8*M
+            for j, (nome, cargo) in enumerate([(elab or "_________________________", cargo_e),
+                                                (aprov or "_________________________", cargo_a)]):
+                ax = 1.8*M + j * (ass_w + 1.6*M)
+                # Linha de assinatura
+                c.setStrokeColor(AZUL_D)
+                c.setLineWidth(0.8)
+                c.line(ax, y_ass - 0.7*M, ax + ass_w, y_ass - 0.7*M)
+                # Nome
+                c.setFont("Helvetica-Bold", 8)
+                c.setFillColor(AZUL_D)
+                c.drawCentredString(ax + ass_w/2, y_ass - 1.0*M, nome)
+                # Cargo
+                c.setFont("Helvetica", 7.5)
+                c.setFillColor(PDF_CINZA3)
+                c.drawCentredString(ax + ass_w/2, y_ass - 1.3*M, cargo)
+                # Data
+                c.setFont("Helvetica", 7.5)
+                c.drawCentredString(ax + ass_w/2, y_ass - 1.6*M, "Data: _____ / _____ / ____________")
+
+            # ── Rodapé ───────────────────────────────────────────────────────
+            c.setFillColor(AZUL_D)
+            c.rect(0, 0, W, 0.8*M, fill=1, stroke=0)
+            c.setFillColor(PDF_BRANCO)
+            c.setFont("Helvetica", 7)
+            c.drawCentredString(W/2, 0.28*M,
+                "Grupo LLE  ·  Departamento Financeiro  ·  Rescisão conforme Lei 4.886/65")
+            c.setFont("Helvetica", 7)
+            c.setFillColor(AMAR)
+            c.drawRightString(W - 1.2*M, 0.28*M, "1 / 1")
+
+            c.save()
             return buf_pdf.getvalue()
+
 
         with st.spinner("Gerando PDF..."):
             pdf_bytes = gerar_pdf(

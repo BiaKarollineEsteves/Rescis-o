@@ -968,319 +968,366 @@ with tab6:
         def gerar_pdf(rc_nome, rc_code, p_ini, p_fim, ann, grp, calc,
                       reter_irrf, ufir_calculo, ano_atual,
                       elab, cargo_e, aprov, cargo_a, obs_txt, logo_b64):
-            """Gera PDF paisagem compacto — mesmo formato da planilha Excel."""
+            """PDF paisagem A4 — 1 página, formato igual ao modelo Excel."""
             from reportlab.lib.pagesizes import landscape, A4
             from reportlab.pdfgen import canvas as cv
             buf_pdf = io.BytesIO()
 
-            # ── Página paisagem ──
             W, H = landscape(A4)   # 841.89 x 595.28 pt
-            M = 28.35              # 1 cm em pontos
+            M = 28.35              # 1 cm
+
             c = cv.Canvas(buf_pdf, pagesize=(W, H))
 
-            # Cores
-            AZUL_D  = PDF_AZUL_D
-            AMAR    = PDF_AMAR
-            BRANCO  = PDF_BRANCO
-            CINZA_L = PDF_CINZA
-            CINZA2  = PDF_CINZA2
-            VERDE   = PDF_VERDE
+            AZUL  = PDF_AZUL_D
+            AMAR  = PDF_AMAR
+            BRC   = PDF_BRANCO
+            CZ    = PDF_CINZA
+            CZ2   = PDF_CINZA2
+            CZ3   = PDF_CINZA3
+            VERDE = PDF_VERDE
 
             def brl(v):
-                try:
-                    return f"R$ {float(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
-                except:
-                    return "—"
+                try: return f"R$ {float(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
+                except: return "—"
 
-            # ── Cabeçalho ───────────────────────────────────────────────────
-            # Barra azul topo
-            c.setFillColor(AZUL_D)
-            c.rect(0, H - 2.8*M, W, 2.8*M, fill=1, stroke=0)
+            # ── Margens ──────────────────────────────────────────────────────
+            LM = 1.5*M   # left margin
+            RM = W - 1.5*M
+            CW = RM - LM  # content width
+
+            # ════════════════════════════════════════════════════════════════
+            # 1. CABEÇALHO
+            # ════════════════════════════════════════════════════════════════
+            # Barra azul
+            c.setFillColor(AZUL)
+            c.rect(0, H - 2.5*M, W, 2.5*M, fill=1, stroke=0)
             # Linha amarela
             c.setFillColor(AMAR)
-            c.rect(0, H - 2.95*M, W, 0.18*M, fill=1, stroke=0)
+            c.rect(0, H - 2.65*M, W, 0.18*M, fill=1, stroke=0)
 
-            # Logo no cabeçalho
+            # Logo
             if logo_b64:
                 try:
-                    logo_bytes = base64.b64decode(logo_b64)
-                    logo_buf = io.BytesIO(logo_bytes)
-                    logo_w = 5.5*M
-                    logo_h = 2.0*M
-                    c.drawImage(logo_buf, 1.2*M, H - 2.6*M,
-                                width=logo_w, height=logo_h,
+                    lb = base64.b64decode(logo_b64)
+                    c.drawImage(io.BytesIO(lb), LM, H-2.35*M,
+                                width=4.8*M, height=1.9*M,
                                 preserveAspectRatio=True, mask='auto')
-                except:
-                    pass
+                except: pass
 
-            # Título no cabeçalho
-            c.setFillColor(BRANCO)
-            c.setFont("Helvetica-Bold", 13)
-            c.drawString(7.5*M, H - 1.5*M, "RESCISÃO DE REPRESENTANTE COMERCIAL")
+            # Título centralizado
+            c.setFont("Helvetica-Bold", 16)
+            c.setFillColor(BRC)
+            c.drawCentredString(W/2, H - 1.45*M, "RESCISÃO DE REPRESENTANTE COMERCIAL")
             c.setFont("Helvetica", 8)
-            c.setFillColor(PDF_CINZA3)
-            c.drawString(7.5*M, H - 2.1*M, "Grupo LLE  ·  Departamento Financeiro  ·  Lei 4.886/65")
+            c.setFillColor(CZ3)
+            c.drawCentredString(W/2, H - 2.05*M,
+                "Grupo LLE  ·  Departamento Financeiro  ·  Lei 4.886/65")
 
-            # Data no canto direito
-            c.setFillColor(BRANCO)
+            # Data direita
             c.setFont("Helvetica", 8)
-            data_hoje = datetime.now().strftime("%d/%m/%Y")
-            c.drawRightString(W - 1.5*M, H - 1.5*M, data_hoje)
+            c.setFillColor(BRC)
+            c.drawRightString(RM, H - 1.45*M, datetime.now().strftime("%d/%m/%Y"))
 
-            # ── Faixa de identificação ───────────────────────────────────────
-            y_id = H - 3.6*M
-            c.setFillColor(CINZA_L)
-            c.roundRect(1.2*M, y_id - 0.9*M, W - 2.4*M, 1.0*M, 3, fill=1, stroke=0)
+            # ════════════════════════════════════════════════════════════════
+            # 2. FAIXA IDENTIFICAÇÃO
+            # ════════════════════════════════════════════════════════════════
+            y = H - 3.3*M
+            c.setFillColor(CZ)
+            c.roundRect(LM, y - 1.0*M, CW, 1.0*M, 3, fill=1, stroke=0)
+            c.setStrokeColor(CZ2)
+            c.setLineWidth(0.5)
+            c.roundRect(LM, y - 1.0*M, CW, 1.0*M, 3, fill=0, stroke=1)
 
-            c.setFont("Helvetica-Bold", 7)
-            c.setFillColor(AZUL_D)
-            labels_id = ["REPRESENTANTE", "CÓDIGO", "PERÍODO", "REGISTROS", f"UFIR-RJ {ano_atual}"]
-            values_id = [rc_nome, str(rc_code), f"{p_ini} a {p_fim}", str(len(grp)), f"{ufir_calculo:.4f}"]
-            col_w = (W - 2.4*M) / len(labels_id)
-            for j, (lb, vl) in enumerate(zip(labels_id, values_id)):
-                x = 1.6*M + j * col_w
+            fields = [
+                ("REPRESENTANTE", rc_nome[:50]),
+                ("CÓDIGO", str(rc_code)),
+                ("PERÍODO", f"{p_ini} a {p_fim}"),
+                (f"UFIR-RJ {ano_atual}", f"{ufir_calculo:.4f}"),
+            ]
+            col_widths = [CW*0.45, CW*0.12, CW*0.28, CW*0.15]
+            cx = LM + 0.4*M
+            for lb, vl, fw in zip([f[0] for f in fields],
+                                   [f[1] for f in fields], col_widths):
                 c.setFont("Helvetica-Bold", 6.5)
-                c.setFillColor(PDF_CINZA3)
-                c.drawString(x, y_id - 0.35*M, lb)
-                c.setFont("Helvetica-Bold", 8)
-                c.setFillColor(AZUL_D)
-                c.drawString(x, y_id - 0.72*M, vl[:45])
+                c.setFillColor(CZ3)
+                c.drawString(cx, y - 0.32*M, lb)
+                c.setFont("Helvetica-Bold", 9)
+                c.setFillColor(AZUL)
+                c.drawString(cx, y - 0.72*M, vl)
+                cx += fw
 
-            # ── Área principal (2 colunas) ──────────────────────────────────
-            y_body = y_id - 1.4*M
-            col1_x = 1.2*M
-            col2_x = W * 0.5 + 0.5*M
-            col1_w = W * 0.5 - 1.7*M
-            col2_w = W * 0.5 - 1.7*M
+            # ════════════════════════════════════════════════════════════════
+            # 3. CONTEÚDO PRINCIPAL — 2 colunas
+            # ════════════════════════════════════════════════════════════════
+            y = H - 4.6*M
+            col1_x = LM
+            col2_x = LM + CW*0.52 + 0.3*M
+            col1_w = CW*0.52
+            col2_w = CW*0.48 - 0.3*M
 
-            # ─ helper: section header ─
-            def sec_header(x, y, w, text):
-                c.setFillColor(AZUL_D)
-                c.rect(x, y - 0.5*M, w, 0.5*M, fill=1, stroke=0)
-                c.setFillColor(BRANCO)
-                c.setFont("Helvetica-Bold", 8)
-                c.drawString(x + 0.3*M, y - 0.34*M, text)
-                return y - 0.6*M
+            # ── helpers ──────────────────────────────────────────────────────
+            def hdr(x, y, w, txt):
+                c.setFillColor(AZUL)
+                c.rect(x, y - 0.48*M, w, 0.48*M, fill=1, stroke=0)
+                c.setFont("Helvetica-Bold", 8.5)
+                c.setFillColor(BRC)
+                c.drawString(x + 0.3*M, y - 0.32*M, txt)
+                return y - 0.55*M
 
-            # ─ helper: table row ─
-            def tbl_row(x, y, w, label, value, bold=False, bg=None, text_color=None):
+            def row(x, y, w, lbl, val, bold=False, bg=None, fg=None, fs=8):
+                row_h = 0.42*M
                 if bg:
                     c.setFillColor(bg)
-                    c.rect(x, y - 0.42*M, w, 0.42*M, fill=1, stroke=0)
-                font = "Helvetica-Bold" if bold else "Helvetica"
-                col = text_color if text_color else AZUL_D
-                c.setFont(font, 8)
-                c.setFillColor(col)
-                c.drawString(x + 0.25*M, y - 0.27*M, label)
-                c.drawRightString(x + w - 0.25*M, y - 0.27*M, value)
-                return y - 0.44*M
+                    c.rect(x, y - row_h, w, row_h, fill=1, stroke=0)
+                fn = "Helvetica-Bold" if bold else "Helvetica"
+                fc = fg if fg else AZUL
+                c.setFont(fn, fs)
+                c.setFillColor(fc)
+                c.drawString(x + 0.3*M, y - row_h + 0.12*M, lbl)
+                c.drawRightString(x + w - 0.3*M, y - row_h + 0.12*M, val)
+                return y - row_h
 
-            def divider(x, y, w):
-                c.setStrokeColor(CINZA2)
-                c.setLineWidth(0.3)
-                c.line(x, y - 0.05*M, x + w, y - 0.05*M)
-                return y - 0.15*M
+            def tbl_hdr(x, y, w, cols, col_ws):
+                c.setFillColor(CZ2)
+                c.rect(x, y - 0.36*M, w, 0.36*M, fill=1, stroke=0)
+                c.setFont("Helvetica-Bold", 7)
+                c.setFillColor(AZUL)
+                cx2 = x
+                for col, cw in zip(cols, col_ws):
+                    c.drawCentredString(cx2 + cw/2, y - 0.24*M, col)
+                    cx2 += cw
+                return y - 0.4*M
 
-            # ════════════════════════════════════════════════
-            # COLUNA 1 — Comissões por Ano + Cálculo
-            # ════════════════════════════════════════════════
-            y1 = sec_header(col1_x, y_body, col1_w, "COMISSÕES BRUTAS E CORREÇÃO UFIR-RJ")
+            # ════════════════════════════
+            # COLUNA 1 — Tabela por ano
+            # ════════════════════════════
+            y1 = hdr(col1_x, y, col1_w, "COMISSÕES BRUTAS E CORREÇÃO UFIR-RJ")
 
-            # Header da mini-tabela
-            c.setFillColor(CINZA2)
-            c.rect(col1_x, y1 - 0.38*M, col1_w, 0.38*M, fill=1, stroke=0)
-            c.setFont("Helvetica-Bold", 7)
-            c.setFillColor(AZUL_D)
-            cw = col1_w / 4
-            for j, h in enumerate(["ANO","BRUTA","UFIR","CORRIGIDA"]):
-                c.drawCentredString(col1_x + cw*j + cw/2, y1 - 0.26*M, h)
-            y1 -= 0.44*M
+            cws = [col1_w*0.18, col1_w*0.28, col1_w*0.18, col1_w*0.36]
+            y1 = tbl_hdr(col1_x, y1, col1_w,
+                         ["ANO","COMISSÃO BRUTA","UFIR","COMISSÃO CORRIGIDA"], cws)
 
-            # Rows
-            for idx, (_, row) in enumerate(ann.iterrows()):
-                bg_row = CINZA_L if idx % 2 == 0 else BRANCO
-                c.setFillColor(bg_row)
-                c.rect(col1_x, y1 - 0.38*M, col1_w, 0.38*M, fill=1, stroke=0)
-                c.setFont("Helvetica", 7.5)
-                c.setFillColor(AZUL_D)
-                vals = [str(int(row["Ano"])),
-                        brl(row["Comissão Bruta"]),
-                        f"{row['UFIR do Ano']:.4f}" if pd.notna(row['UFIR do Ano']) else "—",
-                        brl(row["Comissão Corrigida"])]
-                for j, v in enumerate(vals):
-                    c.drawCentredString(col1_x + cw*j + cw/2, y1 - 0.26*M, v)
+            for idx, (_, r) in enumerate(ann.iterrows()):
+                bg = CZ if idx%2==0 else BRC
+                c.setFillColor(bg)
+                c.rect(col1_x, y1-0.38*M, col1_w, 0.38*M, fill=1, stroke=0)
+                c.setFont("Helvetica", 8)
+                c.setFillColor(AZUL)
+                vals2 = [str(int(r["Ano"])), brl(r["Comissão Bruta"]),
+                         f"{r['UFIR do Ano']:.4f}" if pd.notna(r['UFIR do Ano']) else "—",
+                         brl(r["Comissão Corrigida"])]
+                cx2 = col1_x
+                for v, cw in zip(vals2, cws):
+                    c.drawCentredString(cx2+cw/2, y1-0.26*M, v)
+                    cx2 += cw
                 y1 -= 0.4*M
 
-            # Total row
-            c.setFillColor(AZUL_D)
-            c.rect(col1_x, y1 - 0.42*M, col1_w, 0.42*M, fill=1, stroke=0)
-            c.setFont("Helvetica-Bold", 7.5)
-            c.setFillColor(BRANCO)
-            totals = ["TOTAL", brl(calc['tb']), "—", brl(calc['tc'])]
-            for j, v in enumerate(totals):
-                c.drawCentredString(col1_x + cw*j + cw/2, y1 - 0.28*M, v)
-            y1 -= 0.52*M
-
-            # Nota correção
-            c.setFont("Helvetica-Oblique", 6.5)
-            c.setFillColor(PDF_CINZA3)
-            c.drawString(col1_x, y1 - 0.25*M,
-                f"* Corrigida = UFIR {ano_atual} × Bruta ÷ UFIR_Ano  (Dec. 2394/98)")
+            # Total
+            c.setFillColor(AZUL)
+            c.rect(col1_x, y1-0.44*M, col1_w, 0.44*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 8.5)
+            c.setFillColor(BRC)
+            tot_vals = ["TOTAL", brl(calc['tb']), "—", brl(calc['tc'])]
+            cx2 = col1_x
+            for v, cw in zip(tot_vals, cws):
+                c.drawCentredString(cx2+cw/2, y1-0.29*M, v)
+                cx2 += cw
             y1 -= 0.55*M
 
-            # ── Cálculo da Indenização (coluna 1 continuação) ──
-            y1 = sec_header(col1_x, y1, col1_w, "CÁLCULO DA INDENIZAÇÃO")
+            # Nota
+            c.setFont("Helvetica-Oblique", 6.5)
+            c.setFillColor(CZ3)
+            c.drawString(col1_x, y1-0.22*M,
+                f"* Corrigida = UFIR_{ano_atual} × Comissão ÷ UFIR_Ano   (Dec. Est. 2394/98)")
+            y1 -= 0.55*M
 
-            calc_items = [
-                ("Base de Indenização (Total Corrigido)", brl(calc['tc']), False, None),
-                ("÷ 12 = Indenização 1/12 Avos", brl(calc['ind112']), False, CINZA_L),
-                ("", "", False, None),
-                (f"Base Aviso Prévio (3 últ. meses)", brl(calc['bap']), False, None),
-                (f"  → {' · '.join(calc['u3']['Mês/Ano'].tolist())}", "", False, None),
-                ("÷ 3 = Aviso Prévio 1/3", brl(calc['avp']), False, CINZA_L),
-            ]
-            for lbl, val, bold, bg in calc_items:
-                if lbl == "":
-                    y1 -= 0.15*M
-                    continue
-                y1 = tbl_row(col1_x, y1, col1_w, lbl, val, bold, bg)
+            # ── Cálculo ──────────────────────────────────────────────────────
+            y1 = hdr(col1_x, y1, col1_w, "CÁLCULO DA INDENIZAÇÃO")
 
-            # Indenização Bruta — destaque
-            c.setFillColor(AZUL_D)
-            c.rect(col1_x, y1 - 0.5*M, col1_w, 0.5*M, fill=1, stroke=0)
-            c.setFont("Helvetica-Bold", 9)
-            c.setFillColor(BRANCO)
-            c.drawString(col1_x + 0.3*M, y1 - 0.34*M, "INDENIZAÇÃO BRUTA")
-            c.drawRightString(col1_x + col1_w - 0.3*M, y1 - 0.34*M, brl(calc['bruta']))
+            y1 = row(col1_x, y1, col1_w,
+                     "Base de Indenização (Total Corrigido)", brl(calc['tc']))
+            y1 = row(col1_x, y1, col1_w,
+                     "Valor a Indenizar (1/12 Avos)", brl(calc['ind112']), bg=CZ)
+
+            y1 -= 0.2*M  # espaço
+
+            y1 = row(col1_x, y1, col1_w,
+                     "Base Aviso Prévio", brl(calc['bap']))
+            u3_str = "  → " + " · ".join(calc['u3']['Mês/Ano'].tolist())
+            c.setFont("Helvetica-Oblique", 7.5)
+            c.setFillColor(CZ3)
+            c.drawString(col1_x+0.3*M, y1-0.22*M, u3_str)
+            y1 -= 0.32*M
+            y1 = row(col1_x, y1, col1_w,
+                     "Valor Aviso Prévio (1/3)", brl(calc['avp']), bg=CZ)
+
+            y1 -= 0.2*M  # espaço
+
+            # Indenização Total a Receber (destaque)
+            c.setFillColor(AZUL)
+            c.rect(col1_x, y1-0.5*M, col1_w, 0.5*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 9.5)
+            c.setFillColor(BRC)
+            c.drawString(col1_x+0.3*M, y1-0.34*M, "Indenização Total a Receber")
+            c.drawRightString(col1_x+col1_w-0.3*M, y1-0.34*M, brl(calc['bruta']))
             y1 -= 0.6*M
 
-            irrf_str = f"IRRF 15% ({'Retido' if calc['irrf']>0 else 'NÃO Retido'})"
-            y1 = tbl_row(col1_x, y1, col1_w, irrf_str, brl(calc['irrf']), False, CINZA_L if calc['irrf']==0 else None)
+            y1 = row(col1_x, y1, col1_w,
+                     f"IRRF (15%)", brl(calc['irrf']), bg=CZ)
 
-            # Valor Líquido — destaque amarelo
+            y1 -= 0.1*M
+            # Valor Líquido — amarelo
             c.setFillColor(AMAR)
-            c.rect(col1_x, y1 - 0.55*M, col1_w, 0.55*M, fill=1, stroke=0)
+            c.rect(col1_x, y1-0.54*M, col1_w, 0.54*M, fill=1, stroke=0)
             c.setFont("Helvetica-Bold", 10)
-            c.setFillColor(AZUL_D)
-            c.drawString(col1_x + 0.3*M, y1 - 0.38*M, "VALOR LÍQUIDO A PAGAR")
-            c.drawRightString(col1_x + col1_w - 0.3*M, y1 - 0.38*M, brl(calc['liq']))
-            y1 -= 0.7*M
+            c.setFillColor(AZUL)
+            c.drawString(col1_x+0.3*M, y1-0.37*M, "Indenização - Valor Líquido")
+            c.drawRightString(col1_x+col1_w-0.3*M, y1-0.37*M, brl(calc['liq']))
+            y1 -= 0.65*M
 
-            # ════════════════════════════════════════════════
-            # COLUNA 2 — Comissões Mensais + Assinaturas
-            # ════════════════════════════════════════════════
-            y2 = sec_header(col2_x, y_body, col2_w, "COMISSÕES MENSAIS DETALHADAS")
+            # ════════════════════════════
+            # COLUNA 2 — UFIR + Observações
+            # ════════════════════════════
+            y2 = hdr(col2_x, y, col2_w, "TABELA UFIR-RJ DE REFERÊNCIA")
 
-            # Mini-tabela mensal em 2 sub-colunas
-            meses = [(row['Mês/Ano'], brl(row['Valor'])) for _, row in grp.iterrows()]
-            half = (len(meses) + 1) // 2
-            sub_w = col2_w / 2 - 0.1*M
+            # UFIR table header
+            ufir_cws = [col2_w*0.35, col2_w*0.35, col2_w*0.30]
+            y2 = tbl_hdr(col2_x, y2, col2_w, ["ANO","UFIR-RJ","ANO"], ufir_cws)  # placeholder
 
-            # Headers
-            for sx in [col2_x, col2_x + sub_w + 0.2*M]:
-                c.setFillColor(CINZA2)
-                c.rect(sx, y2 - 0.35*M, sub_w, 0.35*M, fill=1, stroke=0)
+            # Build UFIR table using only years present in the calculation
+            years_used = sorted([int(a) for a in ann["Ano"]])
+            # Get all years from UFIR_TABLE that are between min year and current year
+            # We'll pass the ufir_table as a param - use calc years + context
+            # For now use the ann data to get ufir values
+            ufir_rows = [(int(r["Ano"]), r["UFIR do Ano"]) for _, r in ann.iterrows() if pd.notna(r["UFIR do Ano"])]
+            # Also show current year if not in ann
+            if ano_atual not in [r[0] for r in ufir_rows]:
+                ufir_rows.append((ano_atual, ufir_calculo))
+            ufir_rows.sort()
+
+            # Split into 2 columns for the UFIR table
+            half_u = (len(ufir_rows)+1)//2
+            left_u  = ufir_rows[:half_u]
+            right_u = ufir_rows[half_u:]
+            sub_uw  = col2_w/2 - 0.1*M
+
+            # Sub-headers
+            for sx in [col2_x, col2_x + sub_uw + 0.2*M]:
+                c.setFillColor(CZ2)
+                c.rect(sx, y2-0.33*M, sub_uw, 0.33*M, fill=1, stroke=0)
                 c.setFont("Helvetica-Bold", 7)
-                c.setFillColor(AZUL_D)
-                c.drawString(sx + 0.2*M, y2 - 0.24*M, "MÊS/ANO")
-                c.drawRightString(sx + sub_w - 0.2*M, y2 - 0.24*M, "COMISSÃO")
-            y2 -= 0.4*M
+                c.setFillColor(AZUL)
+                c.drawCentredString(sx + sub_uw*0.4, y2-0.22*M, "ANO")
+                c.drawCentredString(sx + sub_uw*0.8, y2-0.22*M, "UFIR-RJ")
+            y2 -= 0.37*M
 
-            left_col  = meses[:half]
-            right_col = meses[half:]
-            y2_r = y2
-
-            for idx, (mes, val) in enumerate(left_col):
-                bg_r = CINZA_L if idx % 2 == 0 else BRANCO
-                c.setFillColor(bg_r)
-                c.rect(col2_x, y2 - 0.35*M, sub_w, 0.35*M, fill=1, stroke=0)
+            y2L, y2R = y2, y2
+            for idx, (ano_u, ufir_u) in enumerate(left_u):
+                bg = CZ if idx%2==0 else BRC
+                c.setFillColor(bg)
+                c.rect(col2_x, y2L-0.34*M, sub_uw, 0.34*M, fill=1, stroke=0)
                 c.setFont("Helvetica", 7.5)
-                c.setFillColor(AZUL_D)
-                c.drawString(col2_x + 0.2*M, y2 - 0.24*M, mes)
-                c.drawRightString(col2_x + sub_w - 0.2*M, y2 - 0.24*M, val)
-                y2 -= 0.36*M
+                c.setFillColor(AZUL)
+                c.drawCentredString(col2_x+sub_uw*0.4, y2L-0.23*M, str(ano_u))
+                c.drawCentredString(col2_x+sub_uw*0.8, y2L-0.23*M, f"{ufir_u:.4f}")
+                y2L -= 0.35*M
 
-            for idx, (mes, val) in enumerate(right_col):
-                bg_r = CINZA_L if idx % 2 == 0 else BRANCO
-                sx = col2_x + sub_w + 0.2*M
-                c.setFillColor(bg_r)
-                c.rect(sx, y2_r - 0.35*M, sub_w, 0.35*M, fill=1, stroke=0)
+            sx2 = col2_x + sub_uw + 0.2*M
+            for idx, (ano_u, ufir_u) in enumerate(right_u):
+                bg = CZ if idx%2==0 else BRC
+                c.setFillColor(bg)
+                c.rect(sx2, y2R-0.34*M, sub_uw, 0.34*M, fill=1, stroke=0)
                 c.setFont("Helvetica", 7.5)
-                c.setFillColor(AZUL_D)
-                c.drawString(sx + 0.2*M, y2_r - 0.24*M, mes)
-                c.drawRightString(sx + sub_w - 0.2*M, y2_r - 0.24*M, val)
-                y2_r -= 0.36*M
+                c.setFillColor(AZUL)
+                c.drawCentredString(sx2+sub_uw*0.4, y2R-0.23*M, str(ano_u))
+                c.drawCentredString(sx2+sub_uw*0.8, y2R-0.23*M, f"{ufir_u:.4f}")
+                y2R -= 0.35*M
 
-            # Total geral meses
-            y2_final = min(y2, y2_r) - 0.1*M
-            c.setFillColor(AZUL_D)
-            c.rect(col2_x, y2_final - 0.4*M, col2_w, 0.4*M, fill=1, stroke=0)
-            c.setFont("Helvetica-Bold", 8)
-            c.setFillColor(BRANCO)
-            c.drawString(col2_x + 0.3*M, y2_final - 0.28*M, "TOTAL GERAL")
-            c.drawRightString(col2_x + col2_w - 0.3*M, y2_final - 0.28*M, brl(calc['tb']))
-            y2_final -= 0.55*M
+            y2 = min(y2L, y2R) - 0.3*M
 
-            # Observações (se houver)
-            if obs_txt and obs_txt.strip():
-                y2_final = sec_header(col2_x, y2_final, col2_w, "OBSERVAÇÕES")
-                c.setFont("Helvetica", 7.5)
-                c.setFillColor(AZUL_D)
-                # Word wrap simples
-                words = obs_txt.split()
-                line = ""
-                for word in words:
-                    test = line + " " + word if line else word
-                    if c.stringWidth(test, "Helvetica", 7.5) < col2_w - 0.5*M:
-                        line = test
-                    else:
-                        c.drawString(col2_x + 0.2*M, y2_final - 0.25*M, line)
-                        y2_final -= 0.32*M
-                        line = word
-                if line:
-                    c.drawString(col2_x + 0.2*M, y2_final - 0.25*M, line)
-                    y2_final -= 0.32*M
-                y2_final -= 0.2*M
-
-            # ── Assinaturas ──────────────────────────────────────────────────
-            y_ass = max(min(y1, y2_final), 3.0*M) - 0.3*M
-
-            c.setFillColor(CINZA_L)
-            c.roundRect(1.2*M, y_ass - 1.8*M, W - 2.4*M, 1.8*M, 3, fill=1, stroke=0)
-
-            ass_w = (W - 2.4*M) / 2 - 0.8*M
-            for j, (nome, cargo) in enumerate([(elab or "_________________________", cargo_e),
-                                                (aprov or "_________________________", cargo_a)]):
-                ax = 1.8*M + j * (ass_w + 1.6*M)
-                # Linha de assinatura
-                c.setStrokeColor(AZUL_D)
-                c.setLineWidth(0.8)
-                c.line(ax, y_ass - 0.7*M, ax + ass_w, y_ass - 0.7*M)
-                # Nome
-                c.setFont("Helvetica-Bold", 8)
-                c.setFillColor(AZUL_D)
-                c.drawCentredString(ax + ass_w/2, y_ass - 1.0*M, nome)
-                # Cargo
-                c.setFont("Helvetica", 7.5)
-                c.setFillColor(PDF_CINZA3)
-                c.drawCentredString(ax + ass_w/2, y_ass - 1.3*M, cargo)
-                # Data
-                c.setFont("Helvetica", 7.5)
-                c.drawCentredString(ax + ass_w/2, y_ass - 1.6*M, "Data: _____ / _____ / ____________")
-
-            # ── Rodapé ───────────────────────────────────────────────────────
-            c.setFillColor(AZUL_D)
-            c.rect(0, 0, W, 0.8*M, fill=1, stroke=0)
-            c.setFillColor(PDF_BRANCO)
-            c.setFont("Helvetica", 7)
-            c.drawCentredString(W/2, 0.28*M,
-                "Grupo LLE  ·  Departamento Financeiro  ·  Rescisão conforme Lei 4.886/65")
-            c.setFont("Helvetica", 7)
+            # UFIR do ano atual em destaque
+            c.setFillColor(AZUL)
+            c.rect(col2_x, y2-0.44*M, col2_w, 0.44*M, fill=1, stroke=0)
+            c.setFont("Helvetica-Bold", 8.5)
             c.setFillColor(AMAR)
-            c.drawRightString(W - 1.2*M, 0.28*M, "1 / 1")
+            c.drawString(col2_x+0.3*M, y2-0.29*M, f"UFIR-RJ {ano_atual} (Ano de Referência)")
+            c.drawRightString(col2_x+col2_w-0.3*M, y2-0.29*M, f"{ufir_calculo:.4f}")
+            y2 -= 0.55*M
+
+            # Observações
+            if obs_txt and obs_txt.strip():
+                y2 = hdr(col2_x, y2, col2_w, "OBSERVAÇÕES")
+                c.setFont("Helvetica", 8)
+                c.setFillColor(AZUL)
+                # Simple word wrap
+                words = obs_txt.split()
+                line_txt = ""
+                max_w = col2_w - 0.6*M
+                for word in words:
+                    test = (line_txt+" "+word).strip()
+                    if c.stringWidth(test,"Helvetica",8) <= max_w:
+                        line_txt = test
+                    else:
+                        c.drawString(col2_x+0.3*M, y2-0.28*M, line_txt)
+                        y2 -= 0.36*M
+                        line_txt = word
+                if line_txt:
+                    c.drawString(col2_x+0.3*M, y2-0.28*M, line_txt)
+                    y2 -= 0.36*M
+
+            # ════════════════════════════════════════════════════════════════
+            # 4. ASSINATURAS — sempre fixas no rodapé
+            # ════════════════════════════════════════════════════════════════
+            y_ass = 3.5*M   # sempre 3.5 cm do fundo
+
+            c.setFillColor(CZ)
+            c.roundRect(LM, y_ass - 0.15*M, CW, 2.8*M, 3, fill=1, stroke=0)
+            c.setStrokeColor(CZ2)
+            c.setLineWidth(0.4)
+            c.roundRect(LM, y_ass - 0.15*M, CW, 2.8*M, 3, fill=0, stroke=1)
+
+            ass_section_w = CW/2 - 0.5*M
+            for j, (nome, cargo) in enumerate([
+                (elab or "________________________________", cargo_e),
+                (aprov or "________________________________", cargo_a)
+            ]):
+                ax = LM + 0.8*M + j*(ass_section_w + 1.0*M)
+                # Linha assinatura
+                c.setStrokeColor(AZUL)
+                c.setLineWidth(1)
+                c.line(ax, y_ass + 1.8*M, ax + ass_section_w, y_ass + 1.8*M)
+                # Nome
+                c.setFont("Helvetica-Bold", 9)
+                c.setFillColor(AZUL)
+                c.drawCentredString(ax + ass_section_w/2, y_ass + 1.5*M, nome)
+                # Cargo
+                c.setFont("Helvetica", 8)
+                c.setFillColor(CZ3)
+                c.drawCentredString(ax + ass_section_w/2, y_ass + 1.15*M, cargo)
+                # Data
+                c.setFont("Helvetica", 8)
+                c.setFillColor(AZUL)
+                c.drawCentredString(ax + ass_section_w/2, y_ass + 0.6*M,
+                                    "Data: _____ / _____ / ____________")
+
+            # ════════════════════════════════════════════════════════════════
+            # 5. RODAPÉ
+            # ════════════════════════════════════════════════════════════════
+            c.setFillColor(AZUL)
+            c.rect(0, 0, W, 0.9*M, fill=1, stroke=0)
+            c.setFillColor(AMAR)
+            c.rect(0, 0.9*M, W, 0.12*M, fill=1, stroke=0)
+            c.setFont("Helvetica", 7.5)
+            c.setFillColor(BRC)
+            c.drawCentredString(W/2, 0.32*M,
+                "Grupo LLE  ·  Departamento Financeiro  ·  Rescisão conforme Lei 4.886/65")
+            c.setFont("Helvetica-Bold", 7.5)
+            c.setFillColor(AMAR)
+            c.drawRightString(W-1.2*M, 0.32*M, "1 / 1")
 
             c.save()
             return buf_pdf.getvalue()
+
 
 
         with st.spinner("Gerando PDF..."):

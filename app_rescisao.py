@@ -386,13 +386,12 @@ st.markdown(f"""
 <div class="lle-topbar">
   <img src="data:image/png;base64,{LOGO_B64}" alt="Grupo LLE">
   <span class="lle-topbar-title">Rescisão de Representante Comercial</span>
-  <span class="lle-badge">Lei 4.886/65</span>
 </div>
 <div class="lle-header-title">
   <span class="lle-header-icon">📋</span>
   <div>
     <div class="lle-header-main">Rescisão de Representante Comercial</div>
-    <div class="lle-header-sub">Grupo LLE — Departamento Financeiro · Lei 4.886/65</div>
+    <div class="lle-header-sub">Grupo LLE — Departamento Financeiro</div>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -849,7 +848,7 @@ with tab5:
     )
 
     # ── Passo 3: Indenização 1/12
-    st.markdown("#### 3️⃣ Indenização (1/12 Avos) — Art. 27 Lei 4.886/65")
+    st.markdown("#### 3️⃣ Indenização (1/12 Avos) — Art. 27 ")
     detalhe_card(
         "Indenização 1/12 Avos",
         "Indenização = Total Corrigido ÷ 12",
@@ -869,7 +868,7 @@ with tab5:
     )
 
     # ── Passo 5: Aviso Prévio 1/3
-    st.markdown("#### 5️⃣ Aviso Prévio (1/3) — Art. 34 Lei 4.886/65")
+    st.markdown("#### 5️⃣ Aviso Prévio (1/3) — Art. 34 ")
     detalhe_card(
         "Aviso Prévio 1/3",
         "Aviso Prévio = Base Aviso ÷ 3",
@@ -931,9 +930,9 @@ with tab5:
         "Base Legal": [
             "ERP Financeiro",
             "UFIR-RJ (Dec. 2394/98)",
-            "Art. 27 Lei 4.886/65",
+            "Art. 27 ",
             "3 últimos meses pagos",
-            "Art. 34 Lei 4.886/65",
+            "Art. 34 ",
             "1/12 + Aviso Prévio",
             "RIR Art. 718",
             "Bruta − IRRF"
@@ -1025,7 +1024,7 @@ with tab6:
             c.setFont("Helvetica", 8)
             c.setFillColor(CZ3)
             c.drawCentredString(W/2, H - 2.05*M,
-                "Grupo LLE  ·  Departamento Financeiro  ·  Lei 4.886/65")
+                "Grupo LLE  ·  Departamento Financeiro")
 
             # Data direita
             c.setFont("Helvetica", 8)
@@ -1324,7 +1323,7 @@ with tab6:
             c.setFont("Helvetica", 7.5)
             c.setFillColor(BRC)
             c.drawCentredString(W/2, 0.32*M,
-                "Grupo LLE  ·  Departamento Financeiro  ·  Rescisão conforme Lei 4.886/65")
+                "Grupo LLE  ·  Departamento Financeiro  ·  ")
             c.setFont("Helvetica-Bold", 7.5)
             c.setFillColor(AMAR)
             c.drawRightString(W-1.2*M, 0.32*M, "1 / 1")
@@ -1357,6 +1356,6 @@ with tab6:
 # ── FOOTER ───────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <div class="lle-footer">
-  GRUPO LLE · DEPARTAMENTO FINANCEIRO · RESCISÃO CONFORME LEI 4.886/65
+  GRUPO LLE · DEPARTAMENTO FINANCEIRO · 
 </div>
 """, unsafe_allow_html=True)

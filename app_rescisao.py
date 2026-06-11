@@ -444,7 +444,6 @@ def filter_commissions(df, val_col, nat_col, baixa_col, concil_col):
         df_f[concil_col] = pd.to_datetime(df_f[concil_col], errors='coerce')
         if baixa_col and baixa_col in df_f.columns:
             df_f[baixa_col] = pd.to_datetime(df_f[baixa_col], errors='coerce')
-            # Usa conciliação; onde for NaT, usa baixa
             df_f["_data_ref"] = df_f[concil_col].fillna(df_f[baixa_col])
         else:
             df_f["_data_ref"] = df_f[concil_col]
@@ -470,10 +469,11 @@ def build_monthly(df_f, val_col):
     g["Mês/Ano"] = g.apply(lambda r: f"{MESES_PT[int(r['Mês'])]}/{int(r['Ano'])}", axis=1)
     return g
 
-def build_annual(grp, ufir_ano):
+def build_annual(grp, ufir_ano, ufir_table=None):
+    tbl = ufir_table if ufir_table else UFIR_TABLE
     a = grp.groupby("Ano")["Valor"].sum().reset_index()
     a.columns = ["Ano","Comissão Bruta"]
-    a["UFIR do Ano"] = a["Ano"].apply(lambda y: UFIR_TABLE.get(int(y), np.nan))
+    a["UFIR do Ano"] = a["Ano"].apply(lambda y: tbl.get(int(y), np.nan))
     a["Comissão Corrigida"] = a.apply(
         lambda r: ufir_ano * r["Comissão Bruta"] / r["UFIR do Ano"]
                   if pd.notna(r["UFIR do Ano"]) and r["UFIR do Ano"] > 0
@@ -636,7 +636,7 @@ if len(df_f) == 0:
 
 grp  = build_monthly(df_f, val_col)
 ufir_calculo = float(st.session_state.ufir_table.get(ano_atual, ufir_ano))
-ann  = build_annual(grp, ufir_calculo)
+ann  = build_annual(grp, ufir_calculo, ufir_table=st.session_state.get('ufir_table', UFIR_TABLE))
 calc = calcular(ann, grp, reter_irrf, ufir_calculo)
 
 if parceiro_col and parceiro_col in df_f.columns:
@@ -718,7 +718,7 @@ with tab1:
         st.markdown('<div class="sec-title">Comissões por Ano</div>', unsafe_allow_html=True)
         ann_d = ann.copy()
         ann_d["Ano"] = ann_d["Ano"].astype(int)
-        ann_d["UFIR"] = ann_d["UFIR do Ano"].apply(lambda v: f"{v:.4f}")
+        ann_d["UFIR"] = ann_d["UFIR do Ano"].apply(lambda v: f"{v:.4f}" if pd.notna(v) else "N/D")
         ann_d["Bruta"] = ann_d["Comissão Bruta"].apply(fmt_brl)
         ann_d["Corrigida"] = ann_d["Comissão Corrigida"].apply(fmt_brl)
         totrow = pd.DataFrame([{"Ano":"TOTAL","UFIR":"—","Bruta":fmt_brl(calc['tb']),"Corrigida":fmt_brl(calc['tc'])}])

@@ -431,7 +431,7 @@ def load_file(file):
 
 def filter_commissions(df, val_col, nat_col, baixa_col, concil_col):
     if nat_col:
-        mask = df[nat_col].astype(str).str.contains("Comissão s/ vendas|Comissao s/ vendas", case=False, na=False)
+        mask = df[nat_col].astype(str).str.contains("Comissão s/ vendas|Comissao s/ vendas|Serviço de Representação Comercial|Servico de Representacao Comercial", case=False, na=False)
         df_f = df[mask].copy()
     else:
         df_f = df.copy()
@@ -501,7 +501,7 @@ def audit(df_f, grp, ann, calc, val_col, nat_col, ufir_ano):
     n = len(df_f)
     # integridade
     if nat_col:
-        ok = df_f[nat_col].astype(str).str.contains("Comissão|Comissao",case=False).all()
+        ok = df_f[nat_col].astype(str).str.contains("Comissão|Comissao|Representação|Representacao",case=False).all()
         c(1,"Integridade","Filtro só contém comissões?",f"{n}/{n}","ok" if ok else "fail")
     else:
         c(1,"Integridade","Filtro só contém comissões?","N/A","warn","Coluna Natureza não encontrada")

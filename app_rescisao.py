@@ -439,18 +439,32 @@ def filter_commissions(df, val_col, nat_col, baixa_col, concil_col):
     df_f[val_col] = pd.to_numeric(df_f[val_col], errors='coerce')
     df_f = df_f[df_f[val_col] > 0]
 
-    # ── DATA DE REFERÊNCIA: Dt. Conciliação com fallback para Data Baixa ──
+    # ── DATA DE REFERÊNCIA ──
+    # Regra: usa Dt. Conciliação quando preenchida E próxima da Data Baixa (≤ 12 meses).
+    # Se a conciliação for muito posterior (conciliação retroativa), usa Data Baixa.
+    # Fallback: se Dt. Conciliação vazia, usa Data Baixa.
+    if baixa_col and baixa_col in df_f.columns:
+        df_f[baixa_col] = pd.to_datetime(df_f[baixa_col], errors='coerce')
     if concil_col and concil_col in df_f.columns:
         df_f[concil_col] = pd.to_datetime(df_f[concil_col], errors='coerce')
-        if baixa_col and baixa_col in df_f.columns:
-            df_f[baixa_col] = pd.to_datetime(df_f[baixa_col], errors='coerce')
-            df_f["_data_ref"] = df_f[concil_col].fillna(df_f[baixa_col])
-        else:
-            df_f["_data_ref"] = df_f[concil_col]
+
+    if concil_col and concil_col in df_f.columns and baixa_col and baixa_col in df_f.columns:
+        # Diferença em meses entre conciliação e baixa
+        diff_meses = ((df_f[concil_col] - df_f[baixa_col]) / pd.Timedelta(days=30.44))
+        # Usa conciliação só se estiver dentro de 12 meses da baixa
+        usar_concil = df_f[concil_col].notna() & (diff_meses.abs() <= 12)
+        df_f["_data_ref"] = df_f[baixa_col].copy()
+        df_f.loc[usar_concil, "_data_ref"] = df_f.loc[usar_concil, concil_col]
+        # Onde baixa é nula, usa conciliação independente
+        sem_baixa = df_f[baixa_col].isna() & df_f[concil_col].notna()
+        df_f.loc[sem_baixa, "_data_ref"] = df_f.loc[sem_baixa, concil_col]
+        date_ref = "_data_ref"
+    elif concil_col and concil_col in df_f.columns:
+        df_f["_data_ref"] = df_f[concil_col]
         date_ref = "_data_ref"
     elif baixa_col and baixa_col in df_f.columns:
-        df_f[baixa_col] = pd.to_datetime(df_f[baixa_col], errors='coerce')
-        date_ref = baixa_col
+        df_f["_data_ref"] = df_f[baixa_col]
+        date_ref = "_data_ref"
     else:
         date_ref = None
 
